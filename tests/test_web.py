@@ -1,6 +1,9 @@
+from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from agent.web import history_events
+from agent.web import app, history_events
+from skills.form_builder import tools
+from tests.test_form_builder import SURVEY
 
 
 def test_history_events_replays_text_tool_calls_and_parsed_results():
@@ -42,3 +45,24 @@ def test_history_events_keeps_web_search_cards_between_text_blocks():
         {"type": "tool_result", "id": "s2", "name": "web_search", "content": {"error": "max_uses_exceeded"}},
         {"type": "text", "text": "Datadog leads."},
     ]
+
+
+def test_survey_canvas_follows_the_approval_lifecycle(tmp_path, monkeypatch):
+    monkeypatch.setenv("FORMS_DB", str(tmp_path / "forms.db"))
+    client = TestClient(app)
+    survey_id = tools.create_survey.invoke({"survey": SURVEY})["survey_id"]
+
+    draft = client.get(f"/api/surveys/{survey_id}/canvas")
+    assert draft.status_code == 200
+    assert "Agent data infra" in draft.text and 'data-canvas="approve"' in draft.text
+
+    client.post(f"/surveys/{survey_id}/request-changes", data={"feedback": "Drop the spend question"})
+    changes = client.get(f"/api/surveys/{survey_id}/canvas").text
+    assert "Drop the spend question" in changes and 'data-canvas="approve"' not in changes
+
+    tools.revise_survey.invoke({"survey_id": survey_id, "survey": SURVEY})
+    client.post(f"/surveys/{survey_id}/approve")
+    approved = client.get(f"/api/surveys/{survey_id}/canvas").text
+    assert "Approved" in approved and 'data-canvas="approve"' not in approved
+
+    assert client.get("/api/surveys/nope/canvas").status_code == 404

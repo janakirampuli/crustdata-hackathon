@@ -13,12 +13,13 @@ import threading
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 from langgraph.checkpoint.sqlite import SqliteSaver
 from pydantic import BaseModel, Field
 
+from skills.form_builder import store
 from skills.form_builder.server import app as forms_app, make_templates
 
 from .cli import _text
@@ -185,6 +186,15 @@ def chat_page(request: Request):
 def chat(request: ChatRequest):
     return StreamingResponse(_turn_events(request.thread_id, request.message), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/surveys/{survey_id}/canvas", response_class=HTMLResponse)
+def survey_canvas(request: Request, survey_id: str):
+    """In-chat approval canvas. Its buttons post to the form server's approve / request-changes routes."""
+    row = store.get_survey(survey_id)
+    if row is None:
+        return HTMLResponse('<p class="cap">This survey no longer exists.</p>', status_code=404)
+    return templates.TemplateResponse(request, "_survey_canvas.html", {"row": row, "survey": row["spec"]})
 
 
 @app.get("/api/threads/{thread_id}")

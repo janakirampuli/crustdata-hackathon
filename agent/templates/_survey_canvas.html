@@ -1,0 +1,44 @@
+{% from "_icons.html" import icon, status_pill %}
+{% from "_questions.html" import render %}
+<div class="canvas-head">
+  <div class="canvas-title">
+    <span class="label">Survey for approval</span>
+    <b>{{ survey.title }}</b>
+    <span class="canvas-tags">{{ status_pill(row.status) }}<span class="tag">v{{ row.version }}</span>
+      <span class="tag">{{ survey.questions|length }} questions</span><span class="tag">~{{ survey.estimated_minutes }} min</span></span>
+  </div>
+  <a class="btn btn-sm btn-ghost" href="/surveys/{{ row.id }}" target="_blank" rel="noopener">Full page {{ icon("external", "i-sm") }}</a>
+</div>
+
+<div class="canvas-body">
+  <dl class="facts canvas-facts">
+    <div><dt>Research question</dt><dd>{{ survey.research_question }}</dd></div>
+    <div><dt>Audience</dt><dd>{{ survey.audience }}</dd></div>
+  </dl>
+  <div class="intro-box">{{ survey.intro }}</div>
+  <fieldset class="preview" disabled>{{ render(survey, show_meta=true) }}</fieldset>
+</div>
+
+<div class="canvas-foot">
+  {% if row.status == "draft" %}
+    <p class="cap canvas-note">Nobody is contacted until you approve.</p>
+    <div class="canvas-actions">
+      <button class="btn" type="button" data-canvas="toggle-changes">Request changes</button>
+      <button class="btn btn-primary" type="button" data-canvas="approve">{{ icon("check-circle") }} Approve survey</button>
+    </div>
+    <form class="canvas-changes" data-canvas="changes" hidden>
+      <textarea class="input" name="feedback" required placeholder="e.g. Drop the spend question, add a 'Don't know' option to Q3"></textarea>
+      <div class="canvas-actions">
+        <button class="btn btn-ghost" type="button" data-canvas="toggle-changes">Cancel</button>
+        <button class="btn btn-primary" type="submit">Send to agent</button>
+      </div>
+    </form>
+  {% elif row.status == "changes_requested" %}
+    <div class="notice warn">{{ icon("alert") }}<div><b style="font-weight:500">Changes requested</b>{% if row.feedback %}<br>{{ row.feedback }}{% endif %}
+      <div class="cap">The agent revises the survey and sends it back for approval.</div></div></div>
+  {% elif row.status == "approved" %}
+    <div class="notice ok">{{ icon("check-circle") }}<div>Approved{% if row.approved_at %} {{ row.approved_at[:16].replace("T", " ") }} UTC{% endif %}. Invite links can go out.</div></div>
+  {% else %}
+    <p class="cap">Closed. Links no longer accept answers.</p>
+  {% endif %}
+</div>

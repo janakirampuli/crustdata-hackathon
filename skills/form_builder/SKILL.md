@@ -9,7 +9,7 @@ You write the questionnaire. Our own form server hosts it, so every link is tied
 
 ## Lifecycle
 
-1. `form_create_survey`: save a draft. Give the user the `review_url` and stop. Do not mint links yourself.
+1. `form_create_survey`: save a draft. The chat shows it as an approval card, and `review_url` opens the same review as a page. Don't repeat the questions or the link in your reply: one or two lines asking them to approve or request changes on the card, then stop. Do not mint links yourself.
 2. A human opens the review page and either approves it or requests changes.
 3. `form_get_survey`: check the status.
    - `changes_requested`: read `feedback` and call `form_revise_survey` with the full revised survey. That sends it back to draft.

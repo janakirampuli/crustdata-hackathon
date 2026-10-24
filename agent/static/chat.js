@@ -104,6 +104,7 @@ function addToolResult(ev) {
   else {
     const r = (RENDER[ev.name] || renderGeneric)(c);
     meta = r.meta ?? meta; body = r.body ?? ""; open = !!r.open;
+    if (CANVAS_TOOLS.has(ev.name) && c?.survey_id) { addCanvas(c.survey_id); open = false; }
   }
   $(".run-meta", el).innerHTML = meta;
   const raw = `<details class="raw"><summary>Raw request and response</summary><pre class="log"></pre></details>`;
@@ -239,6 +240,66 @@ function renderSurvey(c) {
   };
 }
 
+// ---- approval canvas: the live survey, rendered server-side, with approve / request-changes actions ----
+const CANVAS_TOOLS = new Set(["form_create_survey", "form_revise_survey"]);
+
+function addCanvas(surveyId) {
+  log.querySelectorAll(`.canvas[data-survey="${CSS.escape(surveyId)}"]`).forEach(el => el.remove());
+  const el = append(node("section", "canvas", `<p class="cap">Loading survey…</p>`));
+  el.dataset.survey = surveyId;
+  loadCanvas(el);
+}
+
+async function loadCanvas(el) {
+  try {
+    const res = await fetch(`/api/surveys/${encodeURIComponent(el.dataset.survey)}/canvas`);
+    const html = await res.text();
+    if (el.dataset.html !== html) { el.dataset.html = html; el.innerHTML = html; }
+  } catch { /* keep the last render */ }
+  el.classList.toggle("locked", busy);
+}
+const refreshCanvases = () => log.querySelectorAll(".canvas").forEach(loadCanvas);
+
+async function canvasPost(el, action, body) {
+  const res = await fetch(`/surveys/${encodeURIComponent(el.dataset.survey)}/${action}`, {method: "POST", body});
+  if (!res.ok) throw new Error(`The server returned ${res.status}.`);
+  await loadCanvas(el);
+}
+
+log.addEventListener("click", async e => {
+  const btn = e.target.closest("[data-canvas]"), el = btn?.closest(".canvas");
+  if (!el || btn.tagName === "FORM") return;
+  const title = $(".canvas-title b", el)?.textContent || "survey";
+  if (btn.dataset.canvas === "toggle-changes") {
+    const form = $("[data-canvas=changes]", el);
+    form.hidden = !form.hidden;
+    $(".canvas-foot > .canvas-actions", el).hidden = !form.hidden;
+    if (!form.hidden) $("textarea", form).focus();
+  } else if (btn.dataset.canvas === "approve" && !busy) {
+    btn.disabled = true;
+    try {
+      await canvasPost(el, "approve");
+      ask(`Approved the survey "${title}" (${el.dataset.survey}). Continue.`);
+    } catch (err) { btn.disabled = false; handle({type: "error", message: String(err.message || err)}); }
+  }
+});
+
+log.addEventListener("submit", async e => {
+  const form = e.target.closest("[data-canvas=changes]"), el = form?.closest(".canvas");
+  if (!el) return;
+  e.preventDefault();
+  const feedback = form.feedback.value.trim();
+  if (!feedback || busy) return;
+  const title = $(".canvas-title b", el)?.textContent || "survey";
+  try {
+    await canvasPost(el, "request-changes", new FormData(form));
+    ask(`Requested changes on the survey "${title}" (${el.dataset.survey}):\n${feedback}`);
+  } catch (err) { handle({type: "error", message: String(err.message || err)}); }
+});
+
+// Approvals made on the full review page show up when the reader comes back.
+window.addEventListener("focus", () => { if (!busy) refreshCanvases(); });
+
 function renderGeneric(c) {
   if (c && typeof c === "object" && !Array.isArray(c)) {
     const flat = Object.entries(c).filter(([, v]) => v === null || typeof v !== "object");
@@ -266,6 +327,7 @@ let busy = false;
 async function ask(text) {
   if (busy || !text.trim()) return;
   busy = true; send.disabled = true;
+  log.querySelectorAll(".canvas").forEach(el => el.classList.add("locked"));
   stick(() => addUser(text));
   setWorking(true);
   try {
@@ -294,7 +356,7 @@ async function ask(text) {
   } finally {
     flushText(); setWorking(false);
     busy = false; send.disabled = false; input.focus();
-    window.refreshRail?.();
+    window.refreshRail?.(); refreshCanvases();
   }
 }
 

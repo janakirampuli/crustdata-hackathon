@@ -7,6 +7,8 @@ description: Turn any request, however vague, into a confirmed research brief (o
 
 Every new study starts here. Do not draft a survey, mint links or look up emails until the user has confirmed a brief. A follow-up on an existing study (status, revisions, responses) skips this stage.
 
+**Fast path: skip the brief when the user asks for a draft directly.** If they say to skip the brief, or ask to draft a survey and name both the topic and the audience, call `form_create_survey` straight away. Don't search, size or ask first. The approval card in the chat is their checkpoint, so don't ask "go?" before saving. In your reply, give the audience you assumed in one line and offer to size it with Crustdata after approval. Don't paste the questions into the chat: the card already shows them.
+
 ## Steps
 
 1. **Pin down the ask.** If the request doesn't say what decision it informs or who should answer, ask at most two short questions in one message. Offer your best guess for each so the user can just reply "yes". Never ask for something you can look up, and skip this step when the request is already specific.

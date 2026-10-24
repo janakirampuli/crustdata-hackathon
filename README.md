@@ -23,6 +23,7 @@ agent/
   cli.py        terminal driver
   web.py        chat UI server: streams turns over SSE, mounts the form server on the same port
   templates/chat.html  chat page (extends the shared console layout in skills/form_builder/templates)
+  templates/_survey_canvas.html  in-chat survey approval canvas (approve / request changes)
   static/chat.js       streaming + run-log rendering (tool results as people tables, survey and invite cards)
 skills/
   briefing/     vague ask → confirmed research brief: clarify, web search for market context, size personas with Crustdata

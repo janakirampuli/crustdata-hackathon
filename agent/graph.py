@@ -24,8 +24,8 @@ Principles:
 - When a tool reports warnings or an error, fix the call and retry instead of guessing.
 - Be concise with the user. Show the filters you used and why each person qualifies.
 
-Workflow for a new study: confirmed research brief (briefing skill) → survey draft and human approval (form-builder \
-skill) → verified targets and business emails (crustdata skill) → one invite link per target."""
+Workflow for a new study: confirmed research brief (briefing skill; skipped when the user asks for a draft directly) → \
+survey draft and human approval (form-builder skill) → verified targets and business emails (crustdata skill) → one invite link per target."""
 
 
 class State(TypedDict):
