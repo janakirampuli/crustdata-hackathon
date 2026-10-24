@@ -84,6 +84,7 @@
   .s-draft { color: var(--muted); } .s-changes_requested { color: var(--warn); } .s-approved { color: var(--ok); }
   .s-closed, .s-err { color: var(--bad); } .s-mock { color: var(--warn); }
   .v-pending { color: var(--muted); } .v-ok { color: var(--ok); } .v-flag { color: var(--warn); } .v-fail { color: var(--bad); }
+  .sources { margin: 0; padding-left: 18px; } .sources li { margin: 3px 0; }
   .warn { color: var(--warn); margin: 8px 0 0; padding-left: 18px; }
   .errbox { color: var(--bad); }
   .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
@@ -162,6 +163,7 @@ const LABELS = {
   crustdata_search_companies: "Company search", crustdata_search_jobs: "Job search", crustdata_get_credits: "Credits",
   form_create_survey: "Survey draft", form_revise_survey: "Survey revision", form_get_survey: "Survey status",
   form_list_surveys: "Surveys", form_create_invite_links: "Invite links", form_get_responses: "Responses",
+  web_search: "Web search",
 };
 
 function storage(fn) { try { return fn(window.localStorage); } catch { return null; } }
@@ -267,6 +269,12 @@ function table(headers, rows) {
 function copyBtn(text) { return `<button class="copy" data-copy="${esc(text)}">copy</button>`; }
 
 const RENDER = {
+  web_search(c) {
+    const results = c.results || [];
+    const host = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+    const items = results.slice(0, 3).map(r => `<li>${link(r.url, r.title || r.url)} <span class="sub">${esc(host(r.url))}${r.page_age ? " · " + esc(r.page_age) : ""}</span></li>`);
+    return {meta: `${results.length} results`, body: items.length ? `<ul class="sources">${items.join("")}</ul>` : ""};
+  },
   crustdata_search_people(c) {
     const people = c.profiles || [];
     const total = c.total_count == null ? "?" : fmt(c.total_count) + (c.total_count_relation === "gte" ? "+" : "");

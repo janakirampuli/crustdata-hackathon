@@ -16,7 +16,7 @@ class Skill:
     name: str
     description: str
     instructions: str
-    tools: list[BaseTool] = field(default_factory=list)
+    tools: list[BaseTool | dict] = field(default_factory=list)  # dicts are Anthropic server tools
 
 
 def _parse(skill_md: Path) -> tuple[dict[str, str], str]:

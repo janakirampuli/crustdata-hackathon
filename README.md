@@ -24,6 +24,7 @@ agent/
   web.py        chat UI server: streams turns over SSE, mounts the form server on the same port
   static/chat.html   single-page chat (tool results render as people tables, survey and invite cards)
 skills/
+  briefing/     vague ask → confirmed research brief: clarify, web search for market context, size personas with Crustdata
   crustdata/    Crustdata knowledge + tools (ported from Kris@Work)
     SKILL.md            query-authoring rules, vocabularies, examples, person filter catalog
     contact_plan.py     typed people plan → Crustdata filter DSL (+ catalog validation, country fixes)

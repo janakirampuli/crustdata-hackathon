@@ -49,15 +49,55 @@ def _tool_result(message: ToolMessage) -> dict:
     return {"type": "tool_result", "id": message.tool_call_id, "name": message.name, "content": content}
 
 
+def _search_result(block: dict) -> dict:
+    content = block.get("content")
+    if isinstance(content, dict):  # web_search_tool_result_error
+        return {"error": content.get("error_code", "search_failed")}
+    return {"results": [{"title": r.get("title"), "url": r.get("url"), "page_age": r.get("page_age")}
+                        for r in content or [] if isinstance(r, dict)]}
+
+
+def _server_event(block: dict) -> dict | None:
+    """Server tools (web search) run inside the model call, so they live in the message content, not tool_calls."""
+    if block.get("type") == "server_tool_use":
+        args = block.get("input") or {}
+        if not args and block.get("partial_json"):  # a streamed block keeps its input as the raw JSON string
+            try:
+                args = json.loads(block["partial_json"])
+            except ValueError:
+                pass
+        return {"type": "tool_call", "id": block["id"], "name": block["name"], "args": args}
+    if block.get("type") == "web_search_tool_result":
+        return {"type": "tool_result", "id": block["tool_use_id"], "name": "web_search", "content": _search_result(block)}
+    return None
+
+
+def _message_events(message: AIMessage) -> list[dict]:
+    """A finished model message as events, keeping server-tool cards in place between its text blocks."""
+    events, text = [], ""
+    blocks = message.content if isinstance(message.content, list) else [{"type": "text", "text": message.content}]
+    for block in blocks:
+        if not isinstance(block, dict):
+            continue
+        if block.get("type") == "text":
+            text += block.get("text", "")
+        elif event := _server_event(block):
+            if text:
+                events.append({"type": "text", "text": text})
+                text = ""
+            events.append(event)
+    if text:
+        events.append({"type": "text", "text": text})
+    return events + [_tool_call(c) for c in message.tool_calls]
+
+
 def history_events(messages: list) -> list[dict]:
     events = []
     for message in messages:
         if isinstance(message, HumanMessage):
             events.append({"type": "user", "text": _text(message)})
         elif isinstance(message, AIMessage):
-            if text := _text(message):
-                events.append({"type": "text", "text": text})
-            events.extend(_tool_call(c) for c in message.tool_calls)
+            events.extend(_message_events(message))
         elif isinstance(message, ToolMessage):
             events.append(_tool_result(message))
     return events
@@ -70,24 +110,41 @@ def _sse(event: dict) -> str:
 def _turn_events(thread_id: str, message: str):
     config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 60}
     streamed = set()
+    searches = {}  # (message id, block index) -> server tool call whose input JSON is still streaming
     try:
         for mode, chunk in get_agent().stream({"messages": [HumanMessage(message)]}, config,
                                               stream_mode=["messages", "updates"]):
             if mode == "messages":
                 token, meta = chunk
-                if isinstance(token, AIMessageChunk) and meta.get("langgraph_node") == "agent":
-                    if text := _text(token):
+                if not isinstance(token, AIMessageChunk) or meta.get("langgraph_node") != "agent":
+                    continue
+                if text := _text(token):
+                    streamed.add(token.id)
+                    yield _sse({"type": "text", "text": text})
+                for block in token.content if isinstance(token.content, list) else []:
+                    key = (token.id, block.get("index"))
+                    if block.get("type") == "server_tool_use":
+                        searches[key] = {"id": block["id"], "name": block["name"], "json": ""}
+                    elif block.get("type") == "input_json_delta" and key in searches:
+                        call = searches[key]
+                        call["json"] += block.get("partial_json", "")
+                        try:
+                            args = json.loads(call["json"])
+                        except ValueError:
+                            continue
+                        del searches[key]
+                        yield _sse({"type": "tool_call", "id": call["id"], "name": call["name"], "args": args})
+                    elif event := _server_event(block):
                         streamed.add(token.id)
-                        yield _sse({"type": "text", "text": text})
+                        yield _sse(event)
                 continue
             for payload in chunk.values():
                 for msg in (payload or {}).get("messages", []):
                     if isinstance(msg, AIMessage):
-                        # Fallback for a model call that didn't stream tokens.
-                        if msg.id not in streamed and (text := _text(msg)):
-                            yield _sse({"type": "text", "text": text})
-                        for call in msg.tool_calls:
-                            yield _sse(_tool_call(call))
+                        # A model call that didn't stream gets replayed whole.
+                        events = [_tool_call(c) for c in msg.tool_calls] if msg.id in streamed else _message_events(msg)
+                        for event in events:
+                            yield _sse(event)
                     elif isinstance(msg, ToolMessage):
                         yield _sse(_tool_result(msg))
     except Exception as e:  # surface to the UI instead of a silently dropped stream

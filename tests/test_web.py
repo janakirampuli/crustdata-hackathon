@@ -20,3 +20,25 @@ def test_history_events_replays_text_tool_calls_and_parsed_results():
         {"type": "tool_result", "id": "t2", "name": "x", "content": "not json"},
         {"type": "text", "text": "Found 3."},
     ]
+
+
+def test_history_events_keeps_web_search_cards_between_text_blocks():
+    message = AIMessage(content=[
+        {"type": "text", "text": "Let me check the market."},
+        {"type": "server_tool_use", "id": "s1", "name": "web_search", "input": {"query": "observability vendors"}},
+        {"type": "web_search_tool_result", "tool_use_id": "s1",
+         "content": [{"type": "web_search_result", "title": "Top tools", "url": "https://x.io", "encrypted_content": "e"}]},
+        {"type": "server_tool_use", "id": "s2", "name": "web_search", "input": {}, "partial_json": '{"query": "more"}'},
+        {"type": "web_search_tool_result", "tool_use_id": "s2",
+         "content": {"type": "web_search_tool_result_error", "error_code": "max_uses_exceeded"}},
+        {"type": "text", "text": "Datadog leads."},
+    ])
+    assert history_events([message]) == [
+        {"type": "text", "text": "Let me check the market."},
+        {"type": "tool_call", "id": "s1", "name": "web_search", "args": {"query": "observability vendors"}},
+        {"type": "tool_result", "id": "s1", "name": "web_search",
+         "content": {"results": [{"title": "Top tools", "url": "https://x.io", "page_age": None}]}},
+        {"type": "tool_call", "id": "s2", "name": "web_search", "args": {"query": "more"}},
+        {"type": "tool_result", "id": "s2", "name": "web_search", "content": {"error": "max_uses_exceeded"}},
+        {"type": "text", "text": "Datadog leads."},
+    ]
