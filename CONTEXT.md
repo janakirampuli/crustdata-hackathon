@@ -89,13 +89,17 @@ Us: decide who qualifies (Crustdata) → contact **only** those people → each 
   - `recently_changed_jobs` (boolean)
   - Operators: `= != < =< > => in not_in (.) [.] (!) is_null is_not_null has_all`
   - Paginate with `next_cursor`, and add `sorts` for stable order.
-  - **No end-date filter on past roles**: filter tenure windows in code.
+  - Role end dates *are* filterable: `experience.employment_details.end_date` / `start_date` (all roles). Combine with `company_name` inside an `all_of` group to express "a role at X that ended after D". (Not yet verified live.)
   - ~0.03 credits per result; premium field groups cost more.
   - Always pass `fields` as whole sections (`basic_profile`, `experience`, `social_handles`, `contact`). The leaf paths `basic_profile.first_name` / `last_name` → HTTP 400.
 - `POST /person/enrich` by LinkedIn URL or business email. **Pass `fields`**, or you get only name + id.
 - Search returns **no emails**, only a `business_email_verified` / `has_business_email` flag and the LinkedIn URL. Emails come from **Contact Enrich** (extra credits: call it only for selected targets).
 - `POST /company/identify` is free; `POST /company/search` and `POST /job/search` are also available.
 - `GET /user/credits` returns the balance (zero-credit call).
+
+## Status
+
+- Agent backbone + Crustdata skill: done. See [README.md](README.md) to run it.
 
 ## Work split (proposal — adjust)
 
@@ -112,4 +116,4 @@ Interface between the halves: a **target record** `{crustdata_person_id, name, t
 1. Which form tool? (Our own tiny FastAPI form, Tally or Typeform with hidden fields, or Google Forms.) The unique token per invite must survive it.
 2. Email sending: Gmail API vs Resend/SES. We need reply tracking for follow-ups.
 3. Will the organizers let us survey the room and share the attendee list?
-4. Confirm with Crustdata engineers on site that past roles return end dates and that Contact Enrich is available on our key.
+4. Confirm with Crustdata engineers on site that the `end_date` filter behaves as documented, and how we get business emails on our key (Contact Enrich, or the `contact` section).

@@ -1,0 +1,1117 @@
+{
+ "operatorSets": {
+  "numeric": [
+   "=",
+   "!=",
+   "<",
+   "=<",
+   ">",
+   "=>",
+   "in",
+   "not_in",
+   "is_null",
+   "is_not_null"
+  ],
+  "numericNested": [
+   "=",
+   "!=",
+   "<",
+   "=<",
+   ">",
+   "=>",
+   "in",
+   "not_in",
+   "is_null",
+   "is_not_null",
+   "has_all"
+  ],
+  "temporal": [
+   "=",
+   "!=",
+   "<",
+   "=<",
+   ">",
+   "=>",
+   "in",
+   "not_in",
+   "is_null",
+   "is_not_null"
+  ],
+  "temporalNested": [
+   "=",
+   "!=",
+   "<",
+   "=<",
+   ">",
+   "=>",
+   "in",
+   "not_in",
+   "is_null",
+   "is_not_null",
+   "has_all"
+  ],
+  "text": [
+   "=",
+   "!=",
+   "in",
+   "not_in",
+   "is_null",
+   "is_not_null",
+   "(.)",
+   "(!)",
+   "[.]"
+  ],
+  "textNested": [
+   "=",
+   "!=",
+   "in",
+   "not_in",
+   "is_null",
+   "is_not_null",
+   "has_all",
+   "(.)",
+   "(!)",
+   "[.]"
+  ],
+  "textArray": [
+   "=",
+   "!=",
+   "in",
+   "not_in",
+   "is_null",
+   "is_not_null",
+   "(.)",
+   "(!)",
+   "[.]"
+  ],
+  "textArrayNested": [
+   "=",
+   "!=",
+   "in",
+   "not_in",
+   "is_null",
+   "is_not_null",
+   "has_all",
+   "(.)",
+   "(!)",
+   "[.]"
+  ],
+  "boolean": [
+   "=",
+   "!=",
+   "in",
+   "not_in",
+   "is_null",
+   "is_not_null"
+  ],
+  "booleanNested": [
+   "=",
+   "!=",
+   "in",
+   "not_in",
+   "is_null",
+   "is_not_null",
+   "has_all"
+  ],
+  "personLocation": [
+   "=",
+   "!=",
+   "in",
+   "not_in",
+   "is_null",
+   "is_not_null",
+   "(.)",
+   "(!)",
+   "[.]",
+   "geo_distance",
+   "geo_exclude"
+  ]
+ },
+ "fields": {
+  "crustdata_person_id": {
+   "valueType": "integer",
+   "operatorSet": "numeric",
+   "sortable": true,
+   "description": "Crustdata person ID"
+  },
+  "metadata.updated_at": {
+   "valueType": "datetime",
+   "operatorSet": "temporal",
+   "sortable": true,
+   "description": "Last profile update timestamp"
+  },
+  "metadata.last_scraped_source": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Last profile refresh source"
+  },
+  "basic_profile.name": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "sortable": true,
+   "description": "Full name"
+  },
+  "basic_profile.first_name": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "First name"
+  },
+  "basic_profile.last_name": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Last name"
+  },
+  "basic_profile.headline": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Profile headline"
+  },
+  "basic_profile.summary": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "Profile summary / about"
+  },
+  "basic_profile.languages": {
+   "valueType": "string[]",
+   "operatorSet": "textArray",
+   "description": "Spoken languages"
+  },
+  "basic_profile.last_updated": {
+   "valueType": "datetime",
+   "operatorSet": "temporal",
+   "description": "Last update timestamp on the basic profile"
+  },
+  "basic_profile.location": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "sortable": true,
+   "description": "Location summary"
+  },
+  "basic_profile.location.full_location": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "sortable": true,
+   "description": "Full location string"
+  },
+  "basic_profile.location.city": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "sortable": true,
+   "preferredFields": [
+    "personCities"
+   ],
+   "description": "City"
+  },
+  "basic_profile.location.state": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "sortable": true,
+   "preferredFields": [
+    "personStates"
+   ],
+   "description": "State / region as a full name"
+  },
+  "basic_profile.location.country": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "sortable": true,
+   "preferredFields": [
+    "personCountries"
+   ],
+   "valueFormat": "full country name",
+   "description": "Country as a full name"
+  },
+  "basic_profile.location.continent": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Continent as a full name"
+  },
+  "basic_profile.normalized_title.department": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Job Title Normalization (beta) \u2014 high-level department."
+  },
+  "basic_profile.normalized_title.sub_department": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Job Title Normalization (beta) \u2014 sub-department / category."
+  },
+  "basic_profile.normalized_title.matched_title": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Job Title Normalization (beta) \u2014 standardized canonical title."
+  },
+  "basic_profile.professional_network_name": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Display name on the professional-network profile"
+  },
+  "professional_network.location.raw": {
+   "valueType": "string",
+   "operatorSet": "personLocation",
+   "geoCapable": true,
+   "description": "Raw location string from profile"
+  },
+  "professional_network.location": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Network location summary"
+  },
+  "professional_network.location.city": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Network location city"
+  },
+  "professional_network.location.state": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Network location state / region"
+  },
+  "professional_network.location.country": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Network location country"
+  },
+  "professional_network.location.continent": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Network location continent"
+  },
+  "professional_network.connections": {
+   "valueType": "integer",
+   "operatorSet": "numeric",
+   "sortable": true,
+   "preferredFields": [
+    "minConnections"
+   ],
+   "description": "Connection count"
+  },
+  "professional_network.followers": {
+   "valueType": "integer",
+   "operatorSet": "numeric",
+   "sortable": true,
+   "preferredFields": [
+    "minFollowers"
+   ],
+   "description": "Follower count (requires API key access)"
+  },
+  "professional_network.open_to_cards": {
+   "valueType": "string[]",
+   "operatorSet": "textArray",
+   "preferredFields": [
+    "openToCards",
+    "activelyHiring"
+   ],
+   "enumValues": [
+    "CAREER_INTEREST",
+    "HIRING_MANAGER",
+    "VOLUNTEERING"
+   ],
+   "description": "Open-to signal codes. See Open-to signal values Use only the documented uppercase enum values."
+  },
+  "professional_network.metadata.last_scraped_source": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Last profile refresh source"
+  },
+  "skills.professional_network_skills": {
+   "valueType": "string[]",
+   "operatorSet": "textArray",
+   "filterOnly": true,
+   "description": "Listed skills"
+  },
+  "experience.employment_details.company_name": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Company name across all roles"
+  },
+  "experience.employment_details.title": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Job title across all roles"
+  },
+  "experience.employment_details.description": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Role description across all roles"
+  },
+  "experience.employment_details.seniority_level": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Seniority level across all roles"
+  },
+  "experience.employment_details.function_category": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Function category across all roles"
+  },
+  "experience.employment_details.start_date": {
+   "valueType": "date",
+   "operatorSet": "temporalNested",
+   "sortable": true,
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Role start date across all roles"
+  },
+  "experience.employment_details.end_date": {
+   "valueType": "date",
+   "operatorSet": "temporalNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Role end date across all roles"
+  },
+  "experience.employment_details.location": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Role location across all roles"
+  },
+  "experience.employment_details.company_id": {
+   "valueType": "integer",
+   "operatorSet": "numericNested",
+   "sortable": true,
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Company ID across all roles"
+  },
+  "experience.employment_details.professional_network_id": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Employer profile ID across all roles"
+  },
+  "experience.employment_details.company_website_domain": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "valueFormat": "bare domain without scheme",
+   "description": "Employer website domain"
+  },
+  "experience.employment_details.company_headcount_latest": {
+   "valueType": "integer",
+   "operatorSet": "numericNested",
+   "sortable": true,
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Employer latest headcount"
+  },
+  "experience.employment_details.company_industries": {
+   "valueType": "string[]",
+   "operatorSet": "textArrayNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Employer industries"
+  },
+  "experience.employment_details.company_professional_network_industry": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Employer primary industry label"
+  },
+  "experience.employment_details.company_type": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Employer company type"
+  },
+  "experience.employment_details.company_headquarters_country": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "valueFormat": "ISO 3166-1 alpha-3 country code",
+   "description": "Employer HQ country as ISO-3 code"
+  },
+  "experience.employment_details.company_hq_location": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Employer HQ location string"
+  },
+  "experience.employment_details.company_website": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Employer website across all roles \u2014 exact match against the stored full URL (scheme and any query string included); prefer company_website_domain"
+  },
+  "experience.employment_details.employment_type": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Employment type across all roles"
+  },
+  "experience.employment_details.years_at_company_raw": {
+   "valueType": "number",
+   "operatorSet": "numericNested",
+   "sortable": true,
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Whole years in the role, floored. Counts from the role's start date, so a promotion starts it over. For precise tenure, filter start_date instead"
+  },
+  "experience.employment_details.business_email_verified": {
+   "valueType": "boolean",
+   "operatorSet": "booleanNested",
+   "nestedArrayPath": "experience.employment_details",
+   "description": "Verified business email across all roles"
+  },
+  "experience.employment_details.current.company_name": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "preferredFields": [
+    "companyNames"
+   ],
+   "description": "Current company name (filter alias of current.name)"
+  },
+  "experience.employment_details.current.title": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "preferredFields": [
+    "currentJobTitles"
+   ],
+   "description": "Current job title"
+  },
+  "experience.employment_details.current.description": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Current role description"
+  },
+  "experience.employment_details.current.seniority_level": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "preferredFields": [
+    "seniorityLevels"
+   ],
+   "description": "Current seniority level"
+  },
+  "experience.employment_details.current.function_category": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "preferredFields": [
+    "functionCategories"
+   ],
+   "description": "Current function category"
+  },
+  "experience.employment_details.current.start_date": {
+   "valueType": "date",
+   "operatorSet": "temporalNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "preferredFields": [
+    "currentRoleStartDateFrom",
+    "currentRoleStartDateTo"
+   ],
+   "description": "Current role start date"
+  },
+  "experience.employment_details.current.name": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Current company name (returned response field)"
+  },
+  "experience.employment_details.current.years_at_company_raw": {
+   "valueType": "number",
+   "operatorSet": "numericNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "preferredFields": [
+    "minYearsAtCurrentCompany",
+    "maxYearsAtCurrentCompany"
+   ],
+   "description": "Years at current company"
+  },
+  "experience.employment_details.current.company_headquarters_country": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "preferredFields": [
+    "companyHeadquartersCountries"
+   ],
+   "valueFormat": "ISO-3 country code or full country name",
+   "description": "Current employer HQ country. Java expands in/not_in and =/!= to ISO-3 plus full-name aliases for new searches; existing cursors retain their original filters."
+  },
+  "experience.employment_details.current.company_id": {
+   "valueType": "integer",
+   "operatorSet": "numericNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Current employer company ID (filter alias of current.crustdata_company_id) \u2014 the response returns the id under current.crustdata_company_id, not company_id"
+  },
+  "experience.employment_details.current.professional_network_id": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Current employer profile ID. Returned under the same name on each role, so this one is not an alias."
+  },
+  "experience.employment_details.current.position_id": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Per-role identifier for the current position (one per role, distinct from company ID)"
+  },
+  "experience.employment_details.current.company_industries": {
+   "valueType": "string[]",
+   "operatorSet": "textArrayNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "preferredFields": [
+    "companyIndustryCodes"
+   ],
+   "description": "Current employer industries"
+  },
+  "experience.employment_details.current.company_type": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Current employer company type"
+  },
+  "experience.employment_details.current.company_headcount_latest": {
+   "valueType": "integer",
+   "operatorSet": "numericNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Current employer latest headcount"
+  },
+  "experience.employment_details.current.company_hq_location": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Current employer HQ location string; use companyHeadquartersStates for approximate state/region matching."
+  },
+  "experience.employment_details.current.company_website_domain": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "preferredFields": [
+    "companyDomains"
+   ],
+   "valueFormat": "bare domain without scheme",
+   "description": "Current employer website domain (filter alias of current.company_website) \u2014 filter with a bare domain like \"stripe.com\"; the response returns the full URL under current.company_website"
+  },
+  "experience.employment_details.current.company_professional_network_industry": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Current employer primary industry label"
+  },
+  "experience.employment_details.current.company_professional_network_profile_url": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Current employer profile URL. Exact full URL \u2014 see Find people at a company"
+  },
+  "experience.employment_details.current.company_linkedin_profile_url": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Current employer profile URL (accepted alias)"
+  },
+  "experience.employment_details.current.employment_type": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Current employment type"
+  },
+  "experience.employment_details.current.business_email_verified": {
+   "valueType": "boolean",
+   "operatorSet": "booleanNested",
+   "nestedArrayPath": "experience.employment_details.current",
+   "description": "Verified business email on current role"
+  },
+  "experience.employment_details.past.company_name": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past company name (filter alias of past.name)"
+  },
+  "experience.employment_details.past.title": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past job title"
+  },
+  "experience.employment_details.past.description": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past role description"
+  },
+  "experience.employment_details.past.seniority_level": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past seniority level"
+  },
+  "experience.employment_details.past.function_category": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past function category"
+  },
+  "experience.employment_details.past.start_date": {
+   "valueType": "date",
+   "operatorSet": "temporalNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past role start date"
+  },
+  "experience.employment_details.past.name": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past company name (returned response field)"
+  },
+  "experience.employment_details.past.years_at_company_raw": {
+   "valueType": "number",
+   "operatorSet": "numericNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Years at past company"
+  },
+  "experience.employment_details.past.company_headquarters_country": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "valueFormat": "ISO 3166-1 alpha-3 country code",
+   "description": "Past employer HQ country as ISO-3 code"
+  },
+  "experience.employment_details.past.company_id": {
+   "valueType": "integer",
+   "operatorSet": "numericNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past employer company ID (filter alias of past.crustdata_company_id) \u2014 the response returns the id under past.crustdata_company_id, not company_id"
+  },
+  "experience.employment_details.past.professional_network_id": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past employer profile ID. Returned under the same name on each role, so this one is not an alias."
+  },
+  "experience.employment_details.past.position_id": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Per-role identifier for the past position (one per role, distinct from company ID)"
+  },
+  "experience.employment_details.past.company_industries": {
+   "valueType": "string[]",
+   "operatorSet": "textArrayNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past employer industries"
+  },
+  "experience.employment_details.past.company_type": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past employer company type"
+  },
+  "experience.employment_details.past.company_headcount_latest": {
+   "valueType": "integer",
+   "operatorSet": "numericNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past employer latest headcount"
+  },
+  "experience.employment_details.past.company_hq_location": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past employer HQ location string"
+  },
+  "experience.employment_details.past.company_website_domain": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "valueFormat": "bare domain without scheme",
+   "description": "Past employer website domain (filter alias of past.company_website) \u2014 filter with a bare domain like \"stripe.com\"; the response returns the full URL under past.company_website"
+  },
+  "experience.employment_details.past.company_professional_network_industry": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past employer primary industry label"
+  },
+  "experience.employment_details.past.company_professional_network_profile_url": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past employer profile URL. Exact full URL \u2014 see Find people at a company"
+  },
+  "experience.employment_details.past.company_linkedin_profile_url": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past employer profile URL (accepted alias)"
+  },
+  "experience.employment_details.past.employment_type": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Past employment type"
+  },
+  "experience.employment_details.past.business_email_verified": {
+   "valueType": "boolean",
+   "operatorSet": "booleanNested",
+   "nestedArrayPath": "experience.employment_details.past",
+   "description": "Verified business email on past role"
+  },
+  "education.schools.school": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "education.schools",
+   "description": "School name"
+  },
+  "education.schools.degree": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "education.schools",
+   "description": "Degree"
+  },
+  "education.schools.field_of_study": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "education.schools",
+   "description": "Field of study"
+  },
+  "education.schools.location": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "education.schools",
+   "description": "School location summary"
+  },
+  "education.schools.location.city": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "education.schools",
+   "description": "School location city"
+  },
+  "education.schools.location.state": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "education.schools",
+   "description": "School location state / region"
+  },
+  "education.schools.location.country": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "education.schools",
+   "description": "School location country"
+  },
+  "education.schools.location.continent": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "education.schools",
+   "description": "School location continent"
+  },
+  "education.schools.location.full_location": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "nestedArrayPath": "education.schools",
+   "description": "School full location string"
+  },
+  "certifications.name": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "filterOnly": true,
+   "nestedArrayPath": "certifications",
+   "description": "Certification name"
+  },
+  "certifications.issuing_organization": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "filterOnly": true,
+   "nestedArrayPath": "certifications",
+   "description": "Certification issuer"
+  },
+  "certifications.issue_date": {
+   "valueType": "date",
+   "operatorSet": "temporalNested",
+   "filterOnly": true,
+   "nestedArrayPath": "certifications",
+   "description": "Certification issue date"
+  },
+  "certifications.expiration_date": {
+   "valueType": "date",
+   "operatorSet": "temporalNested",
+   "filterOnly": true,
+   "nestedArrayPath": "certifications",
+   "description": "Certification expiration date"
+  },
+  "certifications.credential_id": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "filterOnly": true,
+   "nestedArrayPath": "certifications",
+   "description": "Certification credential ID"
+  },
+  "certifications.credential_url": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "filterOnly": true,
+   "nestedArrayPath": "certifications",
+   "description": "Certification credential URL"
+  },
+  "honors.title": {
+   "valueType": "string",
+   "operatorSet": "textNested",
+   "filterOnly": true,
+   "nestedArrayPath": "honors",
+   "description": "Honor or award title"
+  },
+  "social_handles.twitter_handle": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "description": "Twitter/X handle"
+  },
+  "dev_platform_profiles.name": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "Name on the GitHub profile"
+  },
+  "dev_platform_profiles.bio": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "Profile bio"
+  },
+  "dev_platform_profiles.location": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "Self-reported location"
+  },
+  "dev_platform_profiles.website_url": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "Blog / website URL"
+  },
+  "dev_platform_profiles.company_text": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "Company text on the profile"
+  },
+  "dev_platform_profiles.is_hireable": {
+   "valueType": "boolean",
+   "operatorSet": "boolean",
+   "filterOnly": true,
+   "description": "GitHub \"available for hire\" flag"
+  },
+  "dev_platform_profiles.followers": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "sortable": true,
+   "filterOnly": true,
+   "description": "Follower count"
+  },
+  "dev_platform_profiles.following": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "sortable": true,
+   "filterOnly": true,
+   "description": "Following count"
+  },
+  "dev_platform_profiles.public_repo_count": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "sortable": true,
+   "filterOnly": true,
+   "description": "Public repositories owned"
+  },
+  "dev_platform_profiles.metadata.created_at": {
+   "valueType": "date",
+   "operatorSet": "temporal",
+   "sortable": true,
+   "filterOnly": true,
+   "description": "Account creation date"
+  },
+  "dev_platform_profiles.total_repos": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "sortable": true,
+   "filterOnly": true,
+   "description": "Owned repositories tracked"
+  },
+  "dev_platform_profiles.total_stars": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "sortable": true,
+   "filterOnly": true,
+   "description": "Stars across all owned repositories"
+  },
+  "dev_platform_profiles.max_stars": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "sortable": true,
+   "filterOnly": true,
+   "description": "Stars on the most-starred repository"
+  },
+  "dev_platform_profiles.median_stars": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "sortable": true,
+   "filterOnly": true,
+   "description": "Median stars across owned repositories"
+  },
+  "dev_platform_profiles.all_languages": {
+   "valueType": "string[]",
+   "operatorSet": "textArray",
+   "filterOnly": true,
+   "description": "Primary languages across all owned repositories"
+  },
+  "dev_platform_profiles.all_topics": {
+   "valueType": "string[]",
+   "operatorSet": "textArray",
+   "filterOnly": true,
+   "description": "Topic tags across all owned repositories"
+  },
+  "dev_platform_profiles.repos.full_name": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "owner/repo slug"
+  },
+  "dev_platform_profiles.repos.owner": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "Owning account login"
+  },
+  "dev_platform_profiles.repos.description": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "Repository description"
+  },
+  "dev_platform_profiles.repos.primary_language": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "Primary language of the repository"
+  },
+  "dev_platform_profiles.repos.topics": {
+   "valueType": "string[]",
+   "operatorSet": "textArray",
+   "filterOnly": true,
+   "description": "Topic tags"
+  },
+  "dev_platform_profiles.repos.license_key": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "License key (for example mit)"
+  },
+  "dev_platform_profiles.repos.is_fork": {
+   "valueType": "boolean",
+   "operatorSet": "boolean",
+   "filterOnly": true,
+   "description": "Whether the repository is a fork"
+  },
+  "dev_platform_profiles.repos.parent": {
+   "valueType": "string",
+   "operatorSet": "text",
+   "filterOnly": true,
+   "description": "Parent repository slug (if a fork)"
+  },
+  "dev_platform_profiles.repos.archived": {
+   "valueType": "boolean",
+   "operatorSet": "boolean",
+   "filterOnly": true,
+   "description": "Archived flag"
+  },
+  "dev_platform_profiles.repos.disabled": {
+   "valueType": "boolean",
+   "operatorSet": "boolean",
+   "filterOnly": true,
+   "description": "Disabled flag"
+  },
+  "dev_platform_profiles.repos.is_template": {
+   "valueType": "boolean",
+   "operatorSet": "boolean",
+   "filterOnly": true,
+   "description": "Template repository flag"
+  },
+  "dev_platform_profiles.repos.has_issues": {
+   "valueType": "boolean",
+   "operatorSet": "boolean",
+   "filterOnly": true,
+   "description": "Issues enabled"
+  },
+  "dev_platform_profiles.repos.has_projects": {
+   "valueType": "boolean",
+   "operatorSet": "boolean",
+   "filterOnly": true,
+   "description": "Projects enabled"
+  },
+  "dev_platform_profiles.repos.has_wiki": {
+   "valueType": "boolean",
+   "operatorSet": "boolean",
+   "filterOnly": true,
+   "description": "Wiki enabled"
+  },
+  "dev_platform_profiles.repos.stars": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "filterOnly": true,
+   "description": "Star count"
+  },
+  "dev_platform_profiles.repos.forks_count": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "filterOnly": true,
+   "description": "Fork count"
+  },
+  "dev_platform_profiles.repos.open_issues_count": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "filterOnly": true,
+   "description": "Open issue count"
+  },
+  "dev_platform_profiles.repos.size": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "filterOnly": true,
+   "description": "Repository size (KB)"
+  },
+  "dev_platform_profiles.repos.github_created_at": {
+   "valueType": "date",
+   "operatorSet": "temporal",
+   "filterOnly": true,
+   "description": "Repository creation date"
+  },
+  "dev_platform_profiles.repos.github_updated_at": {
+   "valueType": "date",
+   "operatorSet": "temporal",
+   "filterOnly": true,
+   "description": "Last metadata update"
+  },
+  "dev_platform_profiles.repos.github_pushed_at": {
+   "valueType": "date",
+   "operatorSet": "temporal",
+   "filterOnly": true,
+   "description": "Last code push"
+  },
+  "recently_changed_jobs": {
+   "valueType": "boolean",
+   "operatorSet": "boolean",
+   "sortable": true,
+   "filterOnly": true,
+   "preferredFields": [
+    "recentlyChangedJobs"
+   ],
+   "description": "Past role ended within 90 days of the last index rebuild; this does not mean a new role started. Use current.start_date for recent hires."
+  },
+  "years_of_experience_raw": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "sortable": true,
+   "preferredFields": [
+    "minYearsOfExperience",
+    "maxYearsOfExperience"
+   ],
+   "description": "Total years of experience (precise)"
+  },
+  "years_of_experience": {
+   "valueType": "number",
+   "operatorSet": "numeric",
+   "description": "Total years of experience (rounded)"
+  }
+ }
+}

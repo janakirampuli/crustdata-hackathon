@@ -1,0 +1,30 @@
+[project]
+name = "crustdata-hackathon"
+version = "0.1.0"
+description = "Verified B2B research agent: LangGraph backbone with pluggable skills"
+requires-python = ">=3.12"
+dependencies = [
+    "langgraph>=1.2",
+    "langchain-anthropic>=1.7",
+    "httpx>=0.27",
+    "pycountry>=24.6",
+    "pydantic>=2.7",
+    "python-dotenv>=1.0",
+]
+
+[project.scripts]
+agent = "agent.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent", "skills"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
