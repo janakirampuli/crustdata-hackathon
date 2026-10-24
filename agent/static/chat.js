@@ -55,7 +55,7 @@ const runs = {};               // tool_call id -> {el, started}
 function append(el) { $(".intro", log)?.remove(); log.append(el); return el; }
 function node(tag, cls, html = "") { const el = document.createElement(tag); el.className = cls; el.innerHTML = html; return el; }
 
-function addUser(text) { current = null; append(node("div", "msg-user", esc(text))); }
+function addUser(text) { flushText(); append(node("div", "msg-user", esc(text))); }
 
 let renderQueued = false;
 function addText(delta) {
