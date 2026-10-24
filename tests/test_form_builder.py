@@ -19,6 +19,8 @@ SURVEY = {
         {"id": "spend", "type": "number", "prompt": "Monthly spend, USD?", "required": False},
         {"id": "gap", "type": "text", "prompt": "Biggest gap?", "required": False},
     ],
+    "email": {"subject": "Agent data infra at {company}", "body": "Hi {first_name}, {personal_line} {link}",
+              "personal_line_rule": "One sentence on their role.", "fallback_line": "We're asking AI builders."},
 }
 TARGET = {"crustdata_person_id": 42, "name": "Asha Rao", "title": "CTO", "company": "Acme",
           "business_email": "asha@acme.ai"}

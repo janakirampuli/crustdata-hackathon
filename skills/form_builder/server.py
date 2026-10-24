@@ -4,6 +4,7 @@ Run with `uv run forms` (FORMS_HOST / FORMS_PORT override 127.0.0.1:8000).
 """
 
 import os
+import re
 import time
 from pathlib import Path
 from urllib.parse import quote
@@ -13,6 +14,7 @@ from pydantic import ValidationError
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
 
 from . import store
 from .schema import OTHER, CampaignConfig, parse_answers
@@ -62,12 +64,22 @@ def humanize(key: str) -> str:
     return re.sub(r"(?<=[a-z])(?=[A-Z])", " ", str(key)).replace("_", " ").replace(".", " › ").lower()
 
 
+def mark_placeholders(text: str) -> Markup:
+    return Markup(re.sub(r"\{([a-z_]+)\}", r'<span class="ph">{\1}</span>', str(escape(text))))
+
+
+def mark_line(body: str, line: str | None) -> Markup:
+    """The email body with its personal (or fallback) line highlighted."""
+    body, line = str(escape(body)), str(escape(line or ""))
+    return Markup(body.replace(line, f"<mark>{line}</mark>", 1) if line else body)
+
+
 def make_templates(*extra_dirs: Path) -> Jinja2Templates:
     """Templates for console pages. Extra dirs come first, so other apps can add pages that extend console.html."""
     t = Jinja2Templates(directory=[*extra_dirs, HERE / "templates"],
                         context_processors=[lambda request: {"rail_surveys": rail_surveys()}])
     t.env.globals.update(OPS=OPS, OTHER=OTHER, STATUS=STATUS, VERIFIED=VERIFIED, PARTICIPANT=PARTICIPANT, TABS=TABS)
-    t.env.filters["humanize"] = humanize
+    t.env.filters.update(humanize=humanize, mark_placeholders=mark_placeholders, mark_line=mark_line)
     return t
 
 

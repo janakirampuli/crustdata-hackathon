@@ -27,7 +27,10 @@ def _subject(survey: Survey, target: dict) -> str:
     return f"{_first_name(target)}, a {survey.estimated_minutes}-minute survey: {survey.title}"
 
 
-def invite(survey_id: str, survey: Survey, token: str, target: dict) -> dict:
+def invite(survey_id: str, survey: Survey, token: str, target: dict, email: dict | None = None) -> dict:
+    """`email` is the invite built from the survey's approved template; without one, the built-in wording is used."""
+    if email is not None:
+        return _deliver(survey_id, token, "invite", target.get("business_email"), email["subject"], email["body"])
     link, opt = f"{base_url()}/s/{token}", f"{base_url()}/s/{token}/opt-out"
     n = len(survey.questions)
     subject = _subject(survey, target)

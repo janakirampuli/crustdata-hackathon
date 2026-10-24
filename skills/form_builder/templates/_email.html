@@ -1,0 +1,40 @@
+{% from "_icons.html" import icon %}
+{# The invite email as the reviewer approves it: the template with its placeholders, then filled in for real people. #}
+{% macro render(survey, preview) %}
+{% set t = survey.email %}
+<div class="email-block">
+  {% if not t %}
+    <div class="notice warn">{{ icon("alert") }}<div>No email template yet. Invite links for this survey will carry no email.</div></div>
+  {% else %}
+    <div class="email-tpl">
+      <div class="email-row"><span class="cap">Subject</span><b>{{ t.subject|mark_placeholders }}</b></div>
+      <div class="email-body">{{ t.body|mark_placeholders }}</div>
+      <dl class="facts email-rules">
+        <div><dt>Personal line, written per person</dt><dd>{{ t.personal_line_rule }}</dd></div>
+        <div><dt>Fallback when a line can't be traced to their profile</dt><dd>{{ t.fallback_line|mark_placeholders }}</dd></div>
+      </dl>
+    </div>
+    {% if preview and preview.emails %}
+      <div class="label">Filled in for {{ preview.emails|length }} real {{ "person" if preview.emails|length == 1 else "people" }}</div>
+      {% for e in preview.emails %}{% set p = preview.samples[loop.index0] %}
+      <details class="email-sample"{% if loop.first %} open{% endif %}>
+        <summary>
+          <span class="grow"><b>{{ p.name }}</b><span class="cap">{{ p.title or "" }}{% if p.company %} · {{ p.company }}{% endif %}</span></span>
+          {% if e.personalized %}<span class="pill ok">Personal line</span>{% else %}<span class="pill warn">Fallback</span>{% endif %}
+          {{ icon("chevron-down") }}
+        </summary>
+        <div class="email-row"><span class="cap">Subject</span><b>{{ e.subject }}</b></div>
+        <div class="email-body">{{ e.body|mark_line(e.personal_line) }}</div>
+        {% if e.personalized %}
+          <div class="tags"><span class="cap">From Crustdata:</span>{% for f in e.facts_used %}<span class="tag">{{ f.replace("_", " ") }} <b>{{ p[f] }}</b></span>{% endfor %}</div>
+        {% else %}
+          <p class="cap">Personal line rejected: {{ e.fallback_reason }}.</p>
+        {% endif %}
+      </details>
+      {% endfor %}
+    {% else %}
+      <p class="cap">No sample people yet, so there's no filled-in preview.</p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endmacro %}

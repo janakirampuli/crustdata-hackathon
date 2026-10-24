@@ -1,5 +1,6 @@
 {% from "_icons.html" import icon, status_pill %}
 {% from "_questions.html" import render %}
+{% import "_email.html" as email %}
 <div class="canvas-head">
   <div class="canvas-title">
     <span class="label">Survey for approval</span>
@@ -17,6 +18,8 @@
   </dl>
   <div class="intro-box">{{ survey.intro }}</div>
   <fieldset class="preview" disabled>{{ render(survey, show_meta=true) }}</fieldset>
+  <div class="label canvas-section">{{ icon("mail", "i-sm") }} Invite email</div>
+  {{ email.render(survey, row.email_preview) }}
 </div>
 
 <div class="canvas-foot">

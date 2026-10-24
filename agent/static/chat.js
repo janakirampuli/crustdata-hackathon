@@ -170,12 +170,16 @@ const RENDER = {
   },
   campaign_launch(c) {
     const invited = c.invited || [], skipped = c.skipped || [];
-    const rows = invited.map(p => `<tr><td>${esc(p.name)}</td><td class="mono">${esc(p.email)}</td></tr>`);
+    const em = c.emails && typeof c.emails === "object" ? c.emails : null;
+    const line = p => p.personalized == null ? "" : pill(p.personalized ? ["Personal line", "ok"] : ["Fallback", "warn"]);
+    const rows = invited.map(p => `<tr><td>${esc(p.name)}</td><td class="mono">${esc(p.email)}</td>${em ? `<td>${line(p)}</td>` : ""}</tr>`);
     const skips = skipped.map(p => `<li>${esc(p.name || p.crustdata_person_id)}: ${esc(p.reason)}</li>`).join("");
+    const sample = em?.sample ? `<details class="raw"><summary>Sample email to ${esc(em.sample.to)}</summary>
+      <div class="email-body"><b>${esc(em.sample.subject)}</b>\n\n${esc(em.sample.body)}</div></details>` : "";
     return {
       open: true,
-      meta: `${plural(invited.length, "invite", "invites")}${skipped.length ? ` · ${fmt(skipped.length)} skipped` : ""}${c.email_mode === "log" ? ` ${pill(["Outbox only", "warn"])}` : ""}`,
-      body: (rows.length ? table(["Person", "Business email"], rows) : "") + (skips ? `<ul class="warn-list">${skips}</ul>` : "")
+      meta: `${plural(invited.length, "invite", "invites")}${em && invited.length ? ` · ${fmt(em.personalized)} personal, ${fmt(em.fallback)} fallback` : ""}${skipped.length ? ` · ${fmt(skipped.length)} skipped` : ""}${c.email_mode === "log" ? ` ${pill(["Outbox only", "warn"])}` : ""}`,
+      body: (rows.length ? table(["Person", "Business email", ...(em ? ["Email"] : [])], rows) : "") + sample + (skips ? `<ul class="warn-list">${skips}</ul>` : "")
         + `<div style="display:flex; gap:8px; flex-wrap:wrap">${workspaceBtn(c.workspace_url, "Open participants")}</div>`,
     };
   },

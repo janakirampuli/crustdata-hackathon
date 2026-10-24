@@ -300,6 +300,26 @@ fieldset.preview .opt, fieldset.preview .scale label { cursor: default; }
 .notice.ok { background: var(--ok-soft); color: var(--fg); } .notice.ok .i { color: var(--ok); }
 .answers { display: grid; gap: 4px; font-size: var(--t-cap); }
 .answers span { color: var(--fg-3); font-family: var(--font-mono); }
+/* ---- invite email: template + filled-in samples ---- */
+.email-block { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.email-tpl { display: flex; flex-direction: column; gap: 12px; }
+.email-row { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.email-row b { font-weight: 500; }
+.email-body { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface);
+              font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.email-body mark { background: var(--ink-soft); color: inherit; border-radius: 3px; padding: 1px 2px; }
+.email-rules { font-size: var(--t-ui); }
+.ph { font-family: var(--font-mono); font-size: 0.86em; color: var(--ink); background: var(--ink-soft); border-radius: 4px; padding: 0 4px; }
+.email-sample { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.email-sample > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; }
+.email-sample > summary::-webkit-details-marker { display: none; }
+.email-sample > summary .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.email-sample > summary b { font-weight: 500; }
+.email-sample > summary > .i { color: var(--fg-3); transition: transform 150ms var(--ease); }
+.email-sample[open] > summary > .i { transform: rotate(180deg); }
+.email-sample > :not(summary) { margin: 0 12px 12px; }
+.email-sample .email-body { background: var(--bg); }
+
 @media (max-width: 980px) { .review { grid-template-columns: minmax(0, 1fr); } .review aside { position: static; } }
 
 /* ---- respondent page ---- */

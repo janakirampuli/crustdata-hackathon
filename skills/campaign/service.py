@@ -5,8 +5,9 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 
-from skills.form_builder import store
+from skills.form_builder import personalize, store
 from skills.form_builder.schema import Audience
+from skills.form_builder.tools import base_url
 
 from . import mailer
 
@@ -47,15 +48,28 @@ def launch(survey_id: str, targets: list[dict], audience: Audience | None = None
         store.mark_launched(survey_id, config.deadline_minutes)
         store.log_event(survey_id, "launched", detail={"max_invites": config.max_invites,
                                                        "target_responses": config.target_responses})
+    invites, spec = store.create_invites(survey_id, fresh), row["spec"]
+    emails = (personalize.build_emails(spec, fresh, [f"{base_url()}/s/{inv['token']}" for inv in invites])
+              if spec.email and fresh else [None] * len(fresh))
     invited = []
-    for t, inv in zip(fresh, store.create_invites(survey_id, fresh)):
-        mailer.invite(survey_id, row["spec"], inv["token"], t)
+    for t, inv, email in zip(fresh, invites, emails):
+        mailer.invite(survey_id, spec, inv["token"], t, email)
         store.mark_contacted(inv["token"], t.get("business_email"), followup=False)
-        store.log_event(survey_id, "invited", inv["token"], {"email": t.get("business_email")})
+        personal = {"personalized": email["personalized"]} if email else {}
+        store.log_event(survey_id, "invited", inv["token"], {"email": t.get("business_email"), **personal})
         invited.append({"crustdata_person_id": inv["crustdata_person_id"], "name": t.get("name"),
-                        "email": t.get("business_email"), "token": inv["token"]})
+                        "email": t.get("business_email"), "token": inv["token"], **personal})
     return {"survey_id": survey_id, "invited": invited, "skipped": skipped, "email_mode": mailer.mode(),
-            **status(survey_id)}
+            "emails": _email_summary(emails), **status(survey_id)}
+
+
+def _email_summary(emails: list[dict | None]) -> dict | str:
+    built = [e for e in emails if e]
+    if len(built) < len(emails):
+        return "no email template on this survey: built-in invite wording"
+    return {"personalized": sum(e["personalized"] for e in built),
+            "fallback": sum(not e["personalized"] for e in built),
+            "sample": next((e for e in built if e["personalized"]), built[0] if built else None)}
 
 
 def send_followups(survey_id: str, force: bool = False) -> list[dict]:

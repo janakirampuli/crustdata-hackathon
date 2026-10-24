@@ -72,11 +72,11 @@ CREATE TABLE IF NOT EXISTS insights (
     generated_at TEXT NOT NULL
 );
 """
-
 # Columns added after the first release; added in place so existing databases keep their data.
 COLUMNS = {
     "surveys": {"config": "TEXT", "audience": "TEXT", "launched_at": "TEXT", "closes_at": "TEXT",
-                "closed_at": "TEXT", "close_reason": "TEXT"},
+                "closed_at": "TEXT", "close_reason": "TEXT",
+                "email_preview": "TEXT"},  # JSON {samples, emails}: the invite template filled for a few real people
     "invites": {"email": "TEXT", "state": "TEXT NOT NULL DEFAULT 'created'", "invited_at": "TEXT",
                 "last_contacted_at": "TEXT", "followups_sent": "INTEGER NOT NULL DEFAULT 0", "opted_out_at": "TEXT"},
 }
@@ -117,7 +117,8 @@ def _survey_row(row: sqlite3.Row | None) -> dict | None:
     d = dict(row)
     return {**d, "spec": Survey.model_validate_json(d["spec"]),
             "config": CampaignConfig.model_validate_json(d["config"]) if d.get("config") else CampaignConfig(),
-            "audience": Audience.model_validate_json(d["audience"]) if d.get("audience") else None}
+            "audience": Audience.model_validate_json(d["audience"]) if d.get("audience") else None,
+            "email_preview": json.loads(d["email_preview"]) if d.get("email_preview") else None}
 
 
 def create_survey(survey: Survey) -> str:
@@ -153,6 +154,12 @@ def revise_survey(survey_id: str, survey: Survey) -> None:
                            (survey.model_dump_json(), _now(), survey_id))
         if cur.rowcount == 0:
             raise KeyError(survey_id)
+
+
+def set_email_preview(survey_id: str, preview: dict | None) -> None:
+    with connect() as conn:
+        conn.execute("UPDATE surveys SET email_preview = ? WHERE id = ?",
+                     (json.dumps(preview) if preview else None, survey_id))
 
 
 def set_status(survey_id: str, status: str, feedback: str | None = None) -> None:

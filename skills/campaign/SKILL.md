@@ -21,8 +21,9 @@ One approved survey is one campaign. Every person invited, every email and every
    - Prefer `deliverable` emails over `catch_all`.
    - Never guess an email.
 3. **Launch.** `campaign_launch` only works on an approved survey. Pass:
-   - **`targets`:** full target records. Include `why_qualified` (one clause the invite email uses, such as "you lead platform engineering at a 120-person fintech") and copy `seniority`, `function`, `company_headcount` and `location` from the search rows, so the analysis can split by them.
+   - **`targets`:** full target records. Copy `headline`, `seniority`, `function`, `company_headcount`, `role_start_date` and `location` from the search rows: the invite's personal line is written only from these facts, and the analysis splits by them.
    - **`audience`:** the persona description; the exact `plan`, `effective_filters` and `total_count` of the search the targets came from; and the confirmed brief as markdown in `brief`. This is what the Audience tab shows, and the report checks the hypotheses against it.
+   Each invite is the survey's approved email template filled in for that person. Report how many got a personal line and how many the fallback (`emails` in the result).
 4. **Monitor.** `campaign_status` reports the funnel, pace and a recommendation.
    - If you're behind pace with invites left, find the next batch (exclude people already invited) and call `campaign_launch` again.
    - `campaign_nudge` sends the follow-up now. The scheduler also sends it automatically after `followup_after_minutes`.

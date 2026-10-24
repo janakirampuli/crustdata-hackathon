@@ -1,5 +1,6 @@
 """Survey spec the LLM writes, plus server-side answer validation for submitted forms."""
 
+import re
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -36,6 +37,45 @@ class Question(BaseModel):
         return self
 
 
+DATA_PLACEHOLDERS = ("first_name", "name", "title", "company", "survey_minutes", "link")
+PERSONAL_LINE = "personal_line"
+_PLACEHOLDER = re.compile(r"\{([^{}]*)\}")
+
+
+def placeholders(text: str) -> list[str]:
+    return _PLACEHOLDER.findall(text)
+
+
+class EmailTemplate(BaseModel):
+    """Approved once with the survey. Code fills the data placeholders from each target record; the agent writes
+    {personal_line} per person at launch, and an ungrounded line is replaced by fallback_line."""
+    subject: str = Field(min_length=3, max_length=120, description="May use {first_name} and {company}.")
+    body: str = Field(max_length=2000, description=(
+        "Plain text. Placeholders: {first_name}, {name}, {title}, {company}, {survey_minutes}, {link}, "
+        "{personal_line}. Must contain {link} and {personal_line} once each. Open by asking for consent, e.g. "
+        "'Would you be open to a 3-minute research survey?'. Code appends the opt-out footer."))
+    personal_line_rule: str = Field(min_length=10, max_length=300, description=(
+        "How to write {personal_line} for each person, e.g. 'One sentence linking their role and company size to "
+        "the research question.'"))
+    fallback_line: str = Field(min_length=10, max_length=300, description=(
+        "Used in place of {personal_line} when it can't be grounded in the person's Crustdata profile. "
+        "May use the data placeholders except {link}."))
+
+    @model_validator(mode="after")
+    def _check(self):
+        allowed = {"subject": ("first_name", "company"), "fallback_line": DATA_PLACEHOLDERS[:-1],
+                   "body": DATA_PLACEHOLDERS + (PERSONAL_LINE,)}
+        for field, names in allowed.items():
+            text = getattr(self, field)
+            unknown = sorted({p for p in placeholders(text) if p not in names})
+            if unknown or text.count("{") != text.count("}"):
+                raise ValueError(f"{field}: unknown or broken placeholders {unknown}; allowed: {list(names)}")
+        for name in ("link", PERSONAL_LINE):
+            if self.body.count("{" + name + "}") != 1:
+                raise ValueError(f"body must contain {{{name}}} exactly once")
+        return self
+
+
 class Survey(BaseModel):
     title: str = Field(min_length=3, max_length=120)
     research_question: str = Field(description="The client's question this survey answers. Not shown to respondents.")
@@ -44,6 +84,8 @@ class Survey(BaseModel):
                        "that answers are used for research only, and that they can skip it.")
     estimated_minutes: int = Field(3, ge=1, le=15)
     questions: list[Question] = Field(min_length=1, max_length=12)
+    email: EmailTemplate | None = Field(None, description="The invite email template, approved with the survey. "
+                                        "Invite links created without one carry no email.")
 
     @model_validator(mode="after")
     def _unique_ids(self):

@@ -1,6 +1,6 @@
 ---
 name: form-builder
-description: Draft a short B2B survey from the client's brief, get it approved by a human, then mint one identity-bound link per verified target and read back the answers.
+description: Draft a short B2B survey and its invite email template from the client's brief, get both approved by a human, then mint one identity-bound link per verified target and read back the answers.
 ---
 
 # Form builder
@@ -9,12 +9,12 @@ You write the questionnaire. Our own form server hosts it, so every link is tied
 
 ## Lifecycle
 
-1. `form_create_survey`: save a draft. The chat shows it as an approval card, and `review_url` opens the same review as a page. Don't repeat the questions or the link in your reply: one or two lines asking them to approve or request changes on the card, then stop. Do not mint links yourself.
+1. `form_create_survey`: save a draft with its invite email template (`survey.email`) and up to 3 `sample_targets`: real people from your Crustdata search for this audience, with their profile facts. If you haven't searched yet, run one `crustdata_search_people` at `limit` 3 first. The chat shows it as an approval card, and `review_url` opens the same review as a page. Don't repeat the questions or the link in your reply: one or two lines asking them to approve or request changes on the card, then stop. Do not mint links yourself.
 2. A human opens the review page and either approves it or requests changes.
 3. `form_get_survey`: check the status.
    - `changes_requested`: read `feedback` and call `form_revise_survey` with the full revised survey. That sends it back to draft.
    - `approved`: go on to step 4.
-4. Fieldwork belongs to the campaign skill: `campaign_launch` creates the links and sends the invites. Use `form_create_invite_links` only when the user wants raw links without emails. Each URL works once and only for that person. Never send one link to several people.
+4. Fieldwork belongs to the campaign skill: `campaign_launch` creates the links and sends each person the approved email template, filled in for them (see the campaign skill). Use `form_create_invite_links` only when the user wants raw links without emails. Each URL works once and only for that person. Never send one link to several people.
 5. `form_get_responses`: answers, each bound to its `crustdata_person_id`, plus invited/opened/responded counts. Only analyse rows whose `verified` is not `fail`.
 
 If a tool refuses (`not_approved`, `locked`, `invalid_survey`), read the error and fix the call. Do not work around approval.
@@ -36,6 +36,15 @@ If a tool refuses (`not_approved`, `locked`, `invalid_survey`), read the error a
 - **Options:** cover the whole range and don't overlap: 1–10 / 11–50 / 51–200, not 1–10 / 10–50. Add `allow_other` when your list might miss real answers, and "None" or "Don't know" where honest people need it.
 - **Balanced scales:** both ends labelled, same number of points on each side.
 - **Ids:** short snake_case names for what each answer means (`current_vendor`, `monthly_spend_usd`). The analysis step reads these ids.
+
+## Writing the invite email (`survey.email`)
+
+The client approves the template once; nobody reviews the individual emails. Code fills `{first_name}`, `{name}`, `{title}`, `{company}`, `{survey_minutes}` and `{link}` from each target record. A writer model fills `{personal_line}` per person at launch, following `personal_line_rule`, and code rejects any line with a number or name that isn't in that person's Crustdata facts. A rejected line becomes `fallback_line`.
+
+- **`subject`:** short and plain, e.g. "Quick research question on {company}'s eng tooling". No clickbait.
+- **`body`:** under 120 words. Greet with `{first_name}`, then ask for consent in the first sentence ("Would you be open to a {survey_minutes}-minute research survey on X?"). Then `{personal_line}`, why their answer matters, that answers are used only for this research, then `{link}`. Sign off as the research team. Code appends the opt-out footer, so don't write one.
+- **`personal_line_rule`:** what the line should connect, e.g. "One sentence linking their role and company size to why their view on X matters." Professional facts only.
+- **`fallback_line`:** a generic sentence that is true for everyone in the audience, e.g. "We're hearing from engineering leaders at Indian SaaS companies like {company}."
 
 ## Standard methods (use these exactly; don't invent new ones)
 
@@ -72,6 +81,12 @@ If a tool refuses (`not_approved`, `locked`, `invalid_survey`), read the error a
      "scale_min": 1, "scale_max": 5, "min_label": "Not a problem", "max_label": "Critical problem"},
     {"id": "monthly_spend_usd", "type": "number", "prompt": "Roughly how much does your team spend on external data per month, in USD?", "required": false},
     {"id": "biggest_gap", "type": "text", "prompt": "What's the one thing you wish your agent data stack did better?", "required": false}
-  ]
+  ],
+  "email": {
+    "subject": "A 2-minute question on agent data at {company}",
+    "body": "Hi {first_name},\n\nWould you be open to a {survey_minutes}-minute research survey on how teams choose data infrastructure for AI agents?\n\n{personal_line} Your answers go only into this research, shared back in aggregate.\n\n{link}\n\nThanks,\nThe Verified Research team",
+    "personal_line_rule": "One sentence linking their role and company stage to why their view on agent data infrastructure matters.",
+    "fallback_line": "We're hearing from founders and engineering leads at Bengaluru AI startups like {company}."
+  }
 }
 ```

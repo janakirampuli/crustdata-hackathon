@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from skills.campaign import analytics, service, tools
-from skills.form_builder import store
+from skills.form_builder import personalize, store
 from skills.form_builder import tools as form_tools
 from skills.form_builder.schema import CampaignConfig
 from skills.form_builder.server import app
@@ -19,6 +19,8 @@ SURVEY = {
         {"id": "pain", "type": "scale", "prompt": "How painful?", "scale_min": 1, "scale_max": 5},
         {"id": "gap", "type": "text", "prompt": "Biggest gap?", "required": False},
     ],
+    "email": {"subject": "Research on {company}", "body": "Hi {first_name},\n\n{personal_line}\n\n{link}",
+              "personal_line_rule": "Their role.", "fallback_line": "We're hearing from leads like you."},
 }
 AUDIENCE = {"description": "Eng leads in Bengaluru", "plan": {"currentJobTitles": ["CTO"]},
             "effective_filters": {"field": "x", "type": "=", "value": 1}, "total_count": 120}
@@ -34,6 +36,7 @@ def target(i: int, email: bool = True, **extra) -> dict:
 def tmp_db(tmp_path, monkeypatch):
     monkeypatch.setenv("FORMS_DB", str(tmp_path / "forms.db"))
     monkeypatch.setenv("FORMS_BASE_URL", "http://test")
+    monkeypatch.setattr(personalize, "write_lines", lambda survey, targets: {})
 
 
 @pytest.fixture
