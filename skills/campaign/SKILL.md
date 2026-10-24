@@ -5,7 +5,7 @@ description: Run fieldwork for an approved survey (invite verified targets, trac
 
 # Campaign
 
-One approved survey is one campaign. Every person invited, every email and every response is tracked in the survey workspace (`workspace_url`), which has these tabs: Progress, Participants, Survey, Audience, Analytics and Activity.
+One approved survey is one campaign. Every person invited, every email and every response is tracked in the survey workspace (`workspace_url`), which has these tabs: Survey, Participants (the audience and its Crustdata filters, plus everyone invited), Progress, Responses, Analytics and Activity.
 
 ## Lifecycle
 
@@ -22,7 +22,7 @@ One approved survey is one campaign. Every person invited, every email and every
    - Never guess an email.
 3. **Launch.** `campaign_launch` only works on an approved survey. Pass:
    - **`targets`:** full target records. Copy `headline`, `seniority`, `function`, `company_headcount`, `role_start_date` and `location` from the search rows: the invite's personal line is written only from these facts, and the analysis splits by them.
-   - **`audience`:** the persona description; and the exact `plan`, `effective_filters` and `total_count` of the search the targets came from. This is what the Audience tab shows. The brief saved with the survey is filled in for you; pass `brief` only if it changed since the draft.
+   - **`audience`:** the persona description; and the exact `plan`, `effective_filters` and `total_count` of the search the targets came from. This is what the Participants tab shows. The brief saved with the survey is filled in for you; pass `brief` only if it changed since the draft.
    Each invite is the survey's approved email template filled in for that person. Report how many got a personal line and how many the fallback (`emails` in the result).
 4. **Monitor.** `campaign_status` reports the funnel, pace and a recommendation.
    - If you're behind pace with invites left, find the next batch (exclude people already invited) and call `campaign_launch` again.

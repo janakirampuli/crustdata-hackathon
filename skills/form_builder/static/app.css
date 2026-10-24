@@ -455,3 +455,16 @@ kbd, .search-btn kbd { font-family: var(--font-mono); font-size: 11px; padding: 
 .flag.down { border-color: color-mix(in srgb, var(--warn) 35%, var(--line)); color: var(--warn); }
 .flag.hard { background: var(--bad-soft); border-color: transparent; color: var(--bad); }
 @media (max-width: 520px) { .resp { grid-template-columns: 52px minmax(0, 1fr); gap: 12px; } }
+
+/* ---- participants: audience header + filter ---- */
+.aud { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; padding: 20px; }
+.aud-reach { display: flex; flex-direction: column; gap: 12px; padding-left: 24px; border-left: 1px solid var(--line); }
+.aud-reach div { display: flex; flex-direction: column; gap: 2px; }
+.aud-reach b { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) {
+  .aud { grid-template-columns: minmax(0, 1fr); }
+  .aud-reach { flex-direction: row; flex-wrap: wrap; gap: 24px; padding-left: 0; border-left: 0; border-top: 1px solid var(--line); padding-top: 14px; }
+}
+.filterbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.filterbar .input { width: auto; flex: 1 1 220px; max-width: 340px; min-height: 32px; padding: 5px 10px; }
+.filterbar .seg-switch { flex-wrap: wrap; }

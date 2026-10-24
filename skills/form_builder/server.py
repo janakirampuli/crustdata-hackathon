@@ -26,8 +26,10 @@ STATUS = {"draft": ("Draft", ""), "changes_requested": ("Changes requested", "wa
           "approved": ("Approved", "ok"), "fielding": ("Fielding", "info"), "closed": ("Closed", "")}
 PARTICIPANT = {"created": ("Not sent", ""), "invited": ("Invited", "info"), "opened": ("Opened", "warn"),
                "responded": ("Responded", "ok"), "opted_out": ("Opted out", "bad"), "expired": ("No response", "")}
-TABS = [("progress", "Progress"), ("participants", "Participants"), ("responses", "Responses"), ("survey", "Survey"),
-        ("audience", "Audience"), ("analytics", "Analytics"), ("activity", "Activity")]
+# Workflow order: what we ask, who we target, who we invited, how fieldwork is going, what came back, what it means.
+TABS = [("survey", "Survey"), ("participants", "Participants"), ("progress", "Progress"),
+        ("responses", "Responses"), ("analytics", "Analytics"), ("activity", "Activity")]
+TAB_ALIASES = {"audience": "participants"}  # Audience merged into Participants
 QUALITY = {"high": ("High quality", "ok"), "ok": ("OK", "info"), "low": ("Low priority", "warn"),
            "spam": ("Likely spam", "bad")}
 VERIFIED = {"pending": ("Pending", ""), "ok": ("Verified", "ok"), "flag": ("Flagged", "warn"), "fail": ("Failed", "bad")}
@@ -138,6 +140,7 @@ def workspace(request: Request, survey_id: str, tab: str | None = None, split: s
     if row is None:
         return _not_found(request, "No survey with that id.")
     tabs = dict(TABS)
+    tab = TAB_ALIASES.get(tab, tab)
     if tab not in tabs:
         tab = "survey" if row["status"] in ("draft", "changes_requested") else "progress"
     ctx = {"row": row, "survey": row["spec"], "config": row["config"], "audience": row["audience"], "tab": tab,
