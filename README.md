@@ -22,7 +22,8 @@ agent/
   skills.py     discovers skills/<name>/SKILL.md (+ tools.py exposing TOOLS)
   cli.py        terminal driver
   web.py        chat UI server: streams turns over SSE, mounts the form server on the same port
-  static/chat.html   single-page chat (tool results render as people tables, survey and invite cards)
+  templates/chat.html  chat page (extends the shared console layout in skills/form_builder/templates)
+  static/chat.js       streaming + run-log rendering (tool results as people tables, survey and invite cards)
 skills/
   briefing/     vague ask → confirmed research brief: clarify, web search for market context, size personas with Crustdata
   crustdata/    Crustdata knowledge + tools (ported from Kris@Work)

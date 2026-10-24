@@ -1,23 +1,42 @@
-{% extends "base.html" %}
-{% block title %}Surveys{% endblock %}
-{% block body %}
-<h1>Surveys</h1>
-<p class="muted">Drafts the agent wrote. Open one to review and approve it before any invite link goes live.</p>
-{% if not surveys %}
-  <div class="card muted">No surveys yet. Ask the agent to draft one.</div>
-{% endif %}
-{% for s in surveys %}
-  <a href="/surveys/{{ s.id }}" style="text-decoration: none; color: inherit;">
-    <div class="card">
-      <div class="row" style="justify-content: space-between;">
-        <strong>{{ s.spec.title }}</strong>
-        <span class="badge s-{{ s.status }}">{{ s.status.replace("_", " ") }}</span>
-      </div>
-      <div class="muted small" style="margin-top: 6px;">{{ s.spec.research_question }}</div>
-      <div class="muted small" style="margin-top: 6px;">
-        {{ s.spec.questions|length }} questions · v{{ s.version }} · {{ s.invites }} invited · {{ s.responses }} responses · {{ s.updated_at[:16].replace("T", " ") }} UTC
-      </div>
+{% extends "console.html" %}
+{% from "_icons.html" import icon, status_pill %}
+{% set active = "surveys" %}
+{% block title %}Surveys · Verified Research{% endblock %}
+{% block crumbs %}<b>Surveys</b>{% endblock %}
+{% block actions %}<a class="btn btn-primary" href="/chat">{{ icon("plus") }} New study</a>{% endblock %}
+{% block main %}
+<div class="page">
+  <div class="page-head">
+    <div>
+      <h1>Surveys</h1>
+      <p class="muted">Every questionnaire the agent drafted. Invite links only work after you approve a survey.</p>
     </div>
-  </a>
-{% endfor %}
+  </div>
+
+  {% if surveys %}
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Survey</th><th>Status</th><th>Questions</th><th>Responded</th><th>Updated (UTC)</th></tr></thead>
+      <tbody>
+      {% for s in surveys %}
+        <tr>
+          <td><a href="/surveys/{{ s.id }}"><b style="font-weight:500">{{ s.spec.title }}</b></a><span class="sub">{{ s.spec.research_question }}</span></td>
+          <td>{{ status_pill(s.status) }}</td>
+          <td class="num">{{ s.spec.questions|length }} <span class="faint">· ~{{ s.spec.estimated_minutes }} min</span></td>
+          <td class="num"><span class="mono">{{ s.responses }} / {{ s.invites }}</span>
+            {% if s.invites %}<span class="sub">{{ ((s.responses / s.invites) * 100)|round|int }}% response</span>{% endif %}</td>
+          <td class="mono faint">{{ s.updated_at[:16].replace("T", " ") }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="panel panel-pad" style="display:flex; flex-direction:column; gap:12px; align-items:flex-start;">
+    <h3>No surveys yet</h3>
+    <p class="muted">Describe a study in the research chat. The agent drafts the questionnaire and it shows up here for approval.</p>
+    <a class="btn btn-primary" href="/chat">{{ icon("message") }} Open research chat</a>
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

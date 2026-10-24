@@ -1,0 +1,3 @@
+{% macro icon(name, cls="") %}<svg class="i {{ cls }}" aria-hidden="true"><use href="/static/icons.svg#{{ name }}"/></svg>{% endmacro %}
+{% macro status_pill(status) %}{% set s = STATUS.get(status, (status, "")) %}<span class="pill {{ s[1] }}">{{ s[0] }}</span>{% endmacro %}
+{% macro verified_pill(v) %}{% set s = VERIFIED.get(v, (v, "")) %}<span class="pill {{ s[1] }}">{{ s[0] }}</span>{% endmacro %}

@@ -1,8 +1,14 @@
 {% extends "base.html" %}
+{% from "_icons.html" import icon %}
 {% block title %}{{ title }}{% endblock %}
 {% block body %}
-<div class="card">
-  <h1>{{ title }}</h1>
-  <p class="muted" style="margin-bottom: 0;">{{ message }}</p>
-</div>
+<main class="respond">
+  <div class="respond-top">
+    <span class="brand-mark">{{ icon("shield-check") }}</span><span>Research survey</span>
+  </div>
+  <div class="panel respond-card" style="gap:12px;">
+    <h1>{{ title }}</h1>
+    <p class="intro">{{ message }}</p>
+  </div>
+</main>
 {% endblock %}

@@ -4,19 +4,57 @@ Run with `uv run forms` (FORMS_HOST / FORMS_PORT override 127.0.0.1:8000).
 """
 
 import os
+import time
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import store
 from .schema import OTHER, parse_answers
 from .tools import base_url
 
+HERE = Path(__file__).parent
+STATUS = {"draft": ("Draft", ""), "changes_requested": ("Changes requested", "warn"),
+          "approved": ("Approved", "ok"), "closed": ("Closed", "")}
+VERIFIED = {"pending": ("Pending", ""), "ok": ("Verified", "ok"), "flag": ("Flagged", "warn"), "fail": ("Failed", "bad")}
+
+
+def rail_surveys() -> list[dict]:
+    return [{"id": s["id"], "title": s["spec"].title, "status": s["status"], "tone": STATUS.get(s["status"], ("", ""))[1],
+             "invites": s["invites"], "responses": s["responses"]} for s in store.list_surveys()]
+
+
+_credits = {"at": 0.0, "value": None}
+
+
+def crustdata_credits() -> float | None:
+    """Zero-credit balance lookup, cached for 30s. None when Crustdata isn't configured or reachable."""
+    if time.monotonic() - _credits["at"] > 30:
+        try:
+            from skills.crustdata.client import get_client
+
+            data = get_client().get_credits()
+            _credits["value"] = data.get("credits") if isinstance(data, dict) else None
+        except Exception:
+            _credits["value"] = None
+        _credits["at"] = time.monotonic()
+    return _credits["value"]
+
+
+def make_templates(*extra_dirs: Path) -> Jinja2Templates:
+    """Templates for console pages. Extra dirs come first, so other apps can add pages that extend console.html."""
+    t = Jinja2Templates(directory=[*extra_dirs, HERE / "templates"],
+                        context_processors=[lambda request: {"rail_surveys": rail_surveys()}])
+    t.env.globals.update(OTHER=OTHER, STATUS=STATUS, VERIFIED=VERIFIED)
+    return t
+
+
 app = FastAPI(title="Survey forms")
-templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
-templates.env.globals["OTHER"] = OTHER
+app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
+templates = make_templates()
 
 
 def _render(request: Request, name: str, status_code: int = 200, **context) -> HTMLResponse:
@@ -30,6 +68,11 @@ def _not_found(request: Request, message: str) -> HTMLResponse:
 @app.get("/", include_in_schema=False)
 def root():
     return RedirectResponse("/surveys")
+
+
+@app.get("/api/rail")
+def rail():
+    return {"surveys": rail_surveys(), "credits": crustdata_credits()}
 
 
 @app.get("/surveys", response_class=HTMLResponse)

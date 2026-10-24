@@ -12,20 +12,23 @@ import sqlite3
 import threading
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 from langgraph.checkpoint.sqlite import SqliteSaver
 from pydantic import BaseModel, Field
 
-from skills.form_builder.server import app as forms_app
+from skills.form_builder.server import app as forms_app, make_templates
 
 from .cli import _text
 
-STATIC = Path(__file__).parent / "static"
+HERE = Path(__file__).parent
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "agent.db"
 
 app = FastAPI(title="Research agent")
+app.mount("/agent-static", StaticFiles(directory=HERE / "static"), name="agent-static")
+templates = make_templates(HERE / "templates")
 _agent = None
 _agent_lock = threading.Lock()
 
@@ -174,8 +177,8 @@ def root():
 
 
 @app.get("/chat", include_in_schema=False)
-def chat_page():
-    return FileResponse(STATIC / "chat.html")
+def chat_page(request: Request):
+    return templates.TemplateResponse(request, "chat.html")
 
 
 @app.post("/api/chat")

@@ -1,0 +1,173 @@
+{% extends "console.html" %}
+{% from "_icons.html" import icon %}
+{% set active = "chat" %}
+{% block title %}Research chat · Verified Research{% endblock %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  .chat-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+  .chat-log { max-width: 820px; margin: 0 auto; padding-block: 28px 40px;
+              padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px));
+              display: flex; flex-direction: column; gap: 16px; }
+
+  /* empty state */
+  .intro { display: flex; flex-direction: column; gap: 28px; padding-top: 4vh; }
+  .intro-head { display: flex; flex-direction: column; gap: 10px; max-width: 62ch; }
+  .intro-head p { font-size: var(--t-body); color: var(--fg-2); line-height: 1.55; }
+  .pipeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--line);
+              border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+  .stage { padding: 14px 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .stage + .stage { border-left: 1px solid var(--line); }
+  .stage .label { color: var(--ink); }
+  .stage b { font-weight: 600; font-size: 14px; }
+  .stage p { font-size: var(--t-cap); color: var(--fg-2); line-height: 1.45; }
+  .examples { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--r-lg);
+              background: var(--surface); overflow: hidden; }
+  .example { display: grid; grid-template-columns: 20px minmax(0, 1fr) 16px; gap: 14px; align-items: center; text-align: left;
+             padding: 13px 16px; background: transparent; border: 0; cursor: pointer; color: var(--fg); }
+  .example + .example { border-top: 1px solid var(--line); }
+  .example:hover { background: var(--sunken); }
+  .example > .i:first-child { color: var(--fg-3); }
+  .example > .i:last-child { color: var(--fg-3); transition: transform 150ms var(--ease); }
+  .example:hover > .i:last-child { transform: translateX(3px); color: var(--fg); }
+  .example b { display: block; font-weight: 500; }
+  .example span { display: block; font-size: var(--t-cap); color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 760px) {
+    .pipeline { grid-template-columns: minmax(0, 1fr); }
+    .stage + .stage { border-left: 0; border-top: 1px solid var(--line); }
+  }
+
+  /* messages */
+  .msg-user { align-self: flex-end; max-width: min(78%, 620px); padding: 10px 14px; border-radius: 14px 14px 4px 14px;
+              background: var(--ink-soft); font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+  .msg-agent { font-size: var(--t-body); line-height: 1.62; word-break: break-word; min-width: 0; }
+  .msg-agent > * { margin: 0 0 0.7em; } .msg-agent > :last-child { margin-bottom: 0; }
+  .msg-agent h1, .msg-agent h2, .msg-agent h3 { font-size: var(--t-h3); margin-top: 1.1em; }
+  .msg-agent ul, .msg-agent ol { padding-left: 1.3em; }
+  .msg-agent li + li { margin-top: 0.25em; }
+  .msg-agent strong { font-weight: 600; }
+  .msg-agent code { font-family: var(--font-mono); font-size: 0.85em; background: var(--sunken); padding: 1px 5px; border-radius: 4px; }
+  .msg-agent pre { background: var(--sunken); border: 1px solid var(--line); padding: 10px 12px; border-radius: var(--r); overflow-x: auto; }
+  .msg-agent pre code { background: none; padding: 0; }
+  .msg-agent .tbl-wrap { margin: 4px 0 12px; }
+  .msg-agent .tbl { font-size: var(--t-ui); line-height: 1.45; }
+  .msg-agent .tbl td, .msg-agent .tbl th { word-break: normal; overflow-wrap: normal; }
+  .msg-error { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--r); background: var(--bad-soft); color: var(--fg); }
+  .msg-error .i { color: var(--bad); }
+
+  /* run log: consecutive tool calls share one bordered group */
+  .runs { border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+  .run + .run { border-top: 1px solid var(--line); }
+  .run > summary { list-style: none; display: grid; grid-template-columns: 18px minmax(0, 1fr) auto auto 16px; gap: 12px;
+                   align-items: center; padding: 11px 14px; cursor: pointer; }
+  .run > summary::-webkit-details-marker { display: none; }
+  .run > summary:hover { background: var(--sunken); }
+  .run-icon { color: var(--fg-3); display: grid; }
+  .run-title { min-width: 0; display: flex; align-items: baseline; gap: 10px; }
+  .run-title b { font-weight: 500; white-space: nowrap; }
+  .run-cap { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-3); font-size: var(--t-cap); }
+  .run-meta { font-size: var(--t-cap); color: var(--fg-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .run-state { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); }
+  .run-state .i { width: 15px; height: 15px; }
+  .run.running .run-state .i { color: var(--ink); animation: spin 0.9s linear infinite; }
+  .run.ok .run-state .i { color: var(--ok); }
+  .run.err .run-state .i { color: var(--bad); }
+  .run > summary > .i:last-child { color: var(--fg-3); transition: transform 150ms var(--ease); }
+  .run[open] > summary > .i:last-child { transform: rotate(180deg); }
+  .run-body { padding: 2px 14px 14px 44px; display: flex; flex-direction: column; gap: 10px; font-size: var(--t-ui); min-width: 0; }
+  .run-body:empty { display: none; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .raw > summary { cursor: pointer; color: var(--fg-3); font-size: var(--t-cap); width: max-content; }
+  .raw > summary:hover { color: var(--fg); }
+  .raw[open] > summary { margin-bottom: 8px; }
+  .sources { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .sources li { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .warn-list { margin: 0; padding-left: 18px; color: var(--warn); font-size: var(--t-cap); }
+  .survey-card { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border-radius: var(--r);
+                 background: var(--sunken); }
+  .survey-card .grow { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .yes { color: var(--ok); } .no { color: var(--fg-3); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (max-width: 600px) {
+    .run > summary { grid-template-columns: 18px minmax(0, 1fr) auto 16px; }
+    .run-meta { display: none; }
+    .run-body { padding-left: 14px; }
+    .msg-user { max-width: 90%; }
+    .composer-bar .cap, #thread-label, .crumbs .sep { display: none; }
+  }
+
+  .working { display: flex; align-items: center; gap: 8px; color: var(--fg-3); font-size: var(--t-cap); }
+  .working .i { animation: spin 0.9s linear infinite; color: var(--ink); }
+
+  /* composer */
+  .composer-wrap { padding-block: 12px 18px; padding-left: max(20px, env(safe-area-inset-left, 0px));
+                   padding-right: max(20px, env(safe-area-inset-right, 0px));
+                   padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+                   border-top: 1px solid var(--line); background: var(--bg); }
+  .composer { max-width: 820px; margin: 0 auto; border: 1px solid var(--line-strong); border-radius: var(--r-lg);
+              background: var(--surface); transition: border-color 120ms, box-shadow 120ms; }
+  .composer:focus-within { border-color: var(--ink); box-shadow: 0 0 0 3px var(--ink-soft); }
+  .composer textarea { display: block; width: 100%; border: 0; outline: none; resize: none; background: transparent;
+                       padding: 12px 14px 4px; font-size: 14px; line-height: 1.5; max-height: 200px; }
+  .composer textarea::placeholder { color: var(--fg-3); }
+  .composer-bar { display: flex; align-items: center; gap: 10px; padding: 6px 8px 8px 14px; }
+  .composer-bar .cap { color: var(--fg-3); }
+  .composer-bar .btn { margin-left: auto; }
+  kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 5px; border: 1px solid var(--line); border-bottom-width: 2px;
+        border-radius: 4px; background: var(--bg); color: var(--fg-2); }
+</style>
+{% endblock %}
+
+{% block crumbs %}<b>Research chat</b><span class="sep">/</span><span class="mono" id="thread-label"></span>{% endblock %}
+{% block actions %}<button class="btn" id="new" type="button">{{ icon("plus") }} New chat</button>{% endblock %}
+
+{% block main %}
+<div class="chat-scroll" id="scroll"><div class="chat-log" id="log"></div></div>
+<div class="composer-wrap">
+  <form class="composer" id="composer">
+    <label class="label" for="input" hidden>Message</label>
+    <textarea id="input" rows="1" placeholder="Your research question, and who you need to hear from…"></textarea>
+    <div class="composer-bar">
+      <span class="cap"><kbd>Enter</kbd> to send · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line</span>
+      <button class="btn btn-primary" id="send" type="submit">{{ icon("arrow-up") }} Send</button>
+    </div>
+  </form>
+</div>
+
+<template id="empty">
+  <div class="intro">
+    <div class="intro-head">
+      <span class="label">New study</span>
+      <h1>Who do you need to hear from?</h1>
+      <p>Describe the research question and the professionals whose answers count. The agent picks qualifying people
+        from Crustdata, drafts a short survey for your approval, and gives each verified person their own link.</p>
+    </div>
+    <div class="pipeline" aria-label="How a study runs">
+      <div class="stage"><span class="label">1 · Plan</span><b>Brief</b><p>Questionnaire and audience spec from your question.</p></div>
+      <div class="stage"><span class="label">2 · Target</span><b>Qualify</b><p>People who match on title, seniority, company and city.</p></div>
+      <div class="stage"><span class="label">3 · Verify</span><b>Approve</b><p>You approve the survey before anyone is contacted.</p></div>
+      <div class="stage"><span class="label">4 · Field</span><b>Invite</b><p>One link per person, bound to their profile.</p></div>
+      <div class="stage"><span class="label">5 · Report</span><b>Analyse</b><p>Findings from verified answers only.</p></div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <span class="label">Start from an example</span>
+      <div class="examples">
+        <button class="example" type="button" data-prompt="Find 10 engineering leaders at Bengaluru startups with 20–200 employees">
+          {{ icon("users") }}<span><b>Find respondents</b><span>Find 10 engineering leaders at Bengaluru startups with 20–200 employees</span></span>{{ icon("arrow-right") }}</button>
+        <button class="example" type="button" data-prompt="I want to learn how Indian fintech CTOs choose observability tools. Who should we survey, and how many exist?">
+          {{ icon("building") }}<span><b>Size an audience</b><span>How do Indian fintech CTOs choose observability tools? Who should we survey, and how many exist?</span></span>{{ icon("arrow-right") }}</button>
+        <button class="example" type="button" data-prompt="Draft a 6-question survey on AI coding assistant adoption for VPs of Engineering">
+          {{ icon("file") }}<span><b>Draft a survey</b><span>Draft a 6-question survey on AI coding assistant adoption for VPs of Engineering</span></span>{{ icon("arrow-right") }}</button>
+        <button class="example" type="button" data-prompt="List my surveys with their invite and response counts">
+          {{ icon("inbox") }}<span><b>Check fieldwork</b><span>List my surveys with their invite and response counts</span></span>{{ icon("arrow-right") }}</button>
+      </div>
+    </div>
+  </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="/agent-static/chat.js"></script>
+{% endblock %}

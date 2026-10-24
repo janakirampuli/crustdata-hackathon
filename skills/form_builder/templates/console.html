@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block body %}
+<div class="shell" id="shell">
+  <aside class="rail" id="rail">
+    <a class="brand" href="/chat">
+      <span class="brand-mark">{{ icon("shield-check") }}</span>
+      <span><span class="brand-name">Verified Research</span><br><span class="brand-sub">B2B surveys from real people</span></span>
+    </a>
+
+    <nav class="nav" aria-label="Main">
+      <a href="/chat" {% if active == "chat" %}aria-current="page"{% endif %}>{{ icon("message") }} Research chat</a>
+      <a href="/surveys" {% if active == "surveys" %}aria-current="page"{% endif %}>{{ icon("clipboard") }} Surveys
+        <span class="count" data-rail-count>{{ rail_surveys|length }}</span></a>
+    </nav>
+
+    <section class="rail-section">
+      <div class="label">Studies</div>
+      <div class="studies" data-rail-studies>
+        {% for s in rail_surveys[:8] %}
+        <a class="study" href="/surveys/{{ s.id }}" title="{{ s.title }} · {{ STATUS[s.status][0] if s.status in STATUS else s.status }}">
+          <span class="dot {{ s.tone }}"></span><span class="t">{{ s.title }}</span><span class="n">{{ s.responses }}/{{ s.invites }}</span>
+        </a>
+        {% else %}
+        <div class="rail-empty">No surveys yet. The agent drafts one when you describe a study.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <div class="rail-foot">
+      <div class="meter" data-rail-credits hidden>
+        <span class="cap">Crustdata credits</span><b>—</b>
+      </div>
+      <div class="meter">
+        <span class="cap">Theme</span>
+        <div class="theme" role="group" aria-label="Theme">
+          <button type="button" data-theme-set="system" title="Match system">{{ icon("monitor", "i-sm") }}</button>
+          <button type="button" data-theme-set="light" title="Light">{{ icon("sun", "i-sm") }}</button>
+          <button type="button" data-theme-set="dark" title="Dark">{{ icon("moon", "i-sm") }}</button>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" data-rail-close></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn btn-ghost btn-sm menu-btn" type="button" data-rail-open aria-label="Open menu">{{ icon("menu") }}</button>
+      <div class="crumbs">{% block crumbs %}{% endblock %}</div>
+      <div class="actions">{% block actions %}{% endblock %}</div>
+    </header>
+    {% block main %}{% endblock %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/app.js"></script>{% endblock %}
