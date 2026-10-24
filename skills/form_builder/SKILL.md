@@ -48,6 +48,8 @@ The client approves the template once; nobody reviews the individual emails. Cod
 
 ## Standard methods (use these exactly; don't invent new ones)
 
+Include every method the brief's **Method** line names, with the unit it gives. These count toward the 8-question limit, so cut a weaker question to make room.
+
 - **Product–market fit (Sean Ellis):**
   - `single_choice` "How would you feel if you could no longer use X?", with options Very disappointed / Somewhat disappointed / Not disappointed / I no longer use X.
   - The benchmark is 40% "Very disappointed".

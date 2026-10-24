@@ -29,6 +29,11 @@ Every new study starts here. Do not draft a survey, mint links or look up emails
    - **Persona:** the definition, plus Crustdata counts (total matches, with business email). Name the alternatives you sized and why you dropped them.
    - **Sample:** target verified responses and invites needed.
    - **Method:** survey type, which standard methods apply (PMF, NPS, Van Westendorp, or none), length (5–8 questions, about 3 minutes).
+     Choose the methods from what the question asks:
+     - **Van Westendorp:** the question mentions price, paying, spend, budget or willingness to pay. Name the thing being priced and its unit, e.g. "one external data API, USD per month".
+     - **PMF:** whether people would miss a product they already use.
+     - **NPS:** loyalty to a named product.
+     Say "none" only when nothing above applies.
    - **Market context:** 3–5 bullets, each with its source link.
 
    End with: "Confirm or edit this, and I'll draft the survey."
