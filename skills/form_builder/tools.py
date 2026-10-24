@@ -87,7 +87,12 @@ class Target(BaseModel):
     company_domain: str | None = None
     linkedin_url: str | None = None
     business_email: str | None = None
-    why_qualified: str | None = None
+    why_qualified: str | None = Field(None, description="One clause for the invite email, e.g. 'you lead platform "
+                                      "engineering at a 120-person fintech'.")
+    seniority: str | None = None
+    function: str | None = None
+    company_headcount: int | None = None
+    location: str | None = None
 
 
 class CreateInviteLinksInput(BaseModel):
@@ -102,7 +107,7 @@ def create_invite_links(survey_id: str, targets: list[Target]) -> dict:
     row = store.get_survey(survey_id)
     if row is None:
         return {"error": "not_found", "survey_id": survey_id}
-    if row["status"] != "approved":
+    if row["status"] not in ("approved", "fielding"):
         return {"error": "not_approved", "status": row["status"], "feedback": row["feedback"],
                 "review_url": _review_url(survey_id)}
     targets = [t if isinstance(t, Target) else Target.model_validate(t) for t in targets]

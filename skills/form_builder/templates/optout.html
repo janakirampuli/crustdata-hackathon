@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Opt out{% endblock %}
+{% block body %}
+<main class="respond">
+  <div class="respond-top"><span class="brand-mark">{{ icon("shield-check") }}</span><span>Research survey</span></div>
+  <div class="panel respond-card" style="gap:16px;">
+    {% if done %}
+      <h1>You're opted out</h1>
+      <p class="intro">We won't contact you about this survey again.</p>
+    {% else %}
+      <h1>Opt out of this survey?</h1>
+      <p class="intro">We'll stop sending reminders and your link will stop working.</p>
+      <form method="post" action="/s/{{ token }}/opt-out"><button class="btn btn-primary" type="submit">Opt out</button></form>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

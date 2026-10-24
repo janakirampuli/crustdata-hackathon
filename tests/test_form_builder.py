@@ -113,7 +113,7 @@ def test_respondent_submits_once(client):
     assert "Already answered" in client.post(f"/s/{token}", data=form).text
 
     result = tools.get_responses.invoke({"survey_id": survey_id})
-    assert result["stats"] == {"invited": 1, "opened": 1, "responded": 1}
+    assert result["stats"] == {"invited": 1, "opened": 1, "responded": 1, "opted_out": 0}
     response = result["responses"][0]
     assert response["crustdata_person_id"] == "42"
     assert response["answers"]["sources"] == ["Web", "B2B data"]

@@ -11,6 +11,9 @@ const TOOLS = {
   form_get_survey: ["Survey status", "clipboard"], form_list_surveys: ["Surveys", "clipboard"],
   form_create_invite_links: ["Invite links", "link"], form_get_responses: ["Responses", "inbox"],
   web_search: ["Web search", "globe"],
+  campaign_configure: ["Fieldwork settings", "clipboard"], campaign_launch: ["Launch fieldwork", "mail"],
+  campaign_status: ["Fieldwork status", "inbox"], campaign_nudge: ["Follow-ups", "mail"],
+  campaign_close: ["Close survey", "lock"], campaign_report: ["Findings", "file"],
 };
 const STATUS = {draft: ["Draft", ""], changes_requested: ["Changes requested", "warn"], approved: ["Approved", "ok"], closed: ["Closed", ""]};
 const VERIFIED = {pending: ["Pending", ""], ok: ["Verified", "ok"], flag: ["Flagged", "warn"], fail: ["Failed", "bad"]};
@@ -155,7 +158,45 @@ function table(headers, rows) {
 }
 const copyBtn = text => `<button class="btn btn-sm" type="button" data-copy="${esc(text)}">${icon("copy", "i-sm")}<span>Copy</span></button>`;
 
+const workspaceBtn = (url, label) => url ? `<a class="btn btn-sm" href="${esc(url)}" target="_blank" rel="noopener">${esc(label)} ${icon("external", "i-sm")}</a>` : "";
+const funnelTags = st => st ? `<div class="tags">${[["Invited", st.invited], ["Opened", st.opened], ["Responded", st.responded], ["Opted out", st.opted_out]]
+  .map(([k, v]) => `<span class="tag">${k} <b>${fmt(v ?? 0)}</b></span>`).join("")}</div>` : "";
+
 const RENDER = {
+  campaign_configure(c) {
+    const k = c.config || {};
+    return {meta: `max ${fmt(k.max_invites)} invites · target ${fmt(k.target_responses)} · ${fmt(k.deadline_minutes)} min`,
+            body: workspaceBtn(c.workspace_url, "Open settings")};
+  },
+  campaign_launch(c) {
+    const invited = c.invited || [], skipped = c.skipped || [];
+    const rows = invited.map(p => `<tr><td>${esc(p.name)}</td><td class="mono">${esc(p.email)}</td></tr>`);
+    const skips = skipped.map(p => `<li>${esc(p.name || p.crustdata_person_id)}: ${esc(p.reason)}</li>`).join("");
+    return {
+      open: true,
+      meta: `${plural(invited.length, "invite", "invites")}${skipped.length ? ` · ${fmt(skipped.length)} skipped` : ""}${c.email_mode === "log" ? ` ${pill(["Outbox only", "warn"])}` : ""}`,
+      body: (rows.length ? table(["Person", "Business email"], rows) : "") + (skips ? `<ul class="warn-list">${skips}</ul>` : "")
+        + `<div style="display:flex; gap:8px; flex-wrap:wrap">${workspaceBtn(c.workspace_url, "Open participants")}</div>`,
+    };
+  },
+  campaign_status(c) {
+    const st = c.stats || {};
+    return {
+      open: true,
+      meta: `${fmt(st.responded ?? 0)} / ${fmt(c.target_responses)} responses · ${statusPill(c.status)}`,
+      body: funnelTags(st) + (c.recommendation ? `<p class="cap">Pace: ${esc(c.recommendation)}${c.minutes_left != null ? ` · ${fmt(c.minutes_left)} min left` : ""}</p>` : "")
+        + workspaceBtn(c.workspace_url, "Open progress"),
+    };
+  },
+  campaign_nudge(c) { return {meta: plural(c.followups_sent || 0, "follow-up sent", "follow-ups sent")}; },
+  campaign_close(c) {
+    return {meta: c.closed ? `Closed · ${esc(c.close_reason || "")}` : "Already closed", body: funnelTags(c.stats)};
+  },
+  campaign_report(c) {
+    const headline = (c.report || "").split(/\n## /)[0].replace(/^## Headline\s*/, "");
+    return {open: true, meta: `${plural(c.n || 0, "response", "responses")} analysed`,
+            body: `<div class="msg-agent" style="font-size:14px">${markdown(headline)}</div>` + workspaceBtn(c.analytics_url, "Open analytics")};
+  },
   web_search(c) {
     const results = c.results || [];
     const host = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
@@ -356,7 +397,7 @@ async function ask(text) {
   } finally {
     flushText(); setWorking(false);
     busy = false; send.disabled = false; input.focus();
-    window.refreshRail?.(); refreshCanvases();
+    window.refreshRail?.(); refreshCanvases(); loadChats();
   }
 }
 
@@ -365,6 +406,33 @@ function showEmpty() {
   log.append($("#empty").content.cloneNode(true));
   log.querySelectorAll("[data-prompt]").forEach(b => b.addEventListener("click", () => ask(b.dataset.prompt)));
 }
+
+// ---- saved chats (rail) ----
+const ago = iso => {
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  return m < 1 ? "now" : m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`;
+};
+async function loadChats() {
+  const box = $("#chats");
+  if (!box) return;
+  try {
+    const {threads} = await (await fetch("/api/threads")).json();
+    box.innerHTML = threads.length ? threads.map(t => `<a class="study chat-link" href="#" data-thread="${esc(t.id)}"
+        aria-current="${t.id === threadId}" title="${esc(t.title)}">${icon("message")}<span class="t">${esc(t.title)}</span>
+        <span class="n">${ago(t.updated_at)}</span></a>`).join("")
+      : `<div class="rail-empty">No saved chats yet.</div>`;
+  } catch { /* keep what's there */ }
+}
+$("#chats")?.addEventListener("click", e => {
+  const a = e.target.closest("[data-thread]");
+  if (!a) return;
+  e.preventDefault();
+  if (busy || a.dataset.thread === threadId) return;
+  threadId = a.dataset.thread; storage(s => s.setItem("threadId", threadId));
+  Object.keys(runs).forEach(k => delete runs[k]); autoOpened.clear(); current = null;
+  $("#shell")?.classList.remove("rail-open");
+  restore().then(loadChats);
+});
 
 async function restore() {
   showEmpty(); showThread();
@@ -389,8 +457,9 @@ $("#new").addEventListener("click", () => {
   if (busy) return;
   threadId = newId(); storage(s => s.setItem("threadId", threadId));
   Object.keys(runs).forEach(k => delete runs[k]); autoOpened.clear(); current = null;
-  showEmpty(); showThread(); input.focus();
+  showEmpty(); showThread(); loadChats(); input.focus();
 });
 
 restore();
+loadChats();
 input.focus();

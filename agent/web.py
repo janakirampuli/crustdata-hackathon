@@ -197,6 +197,26 @@ def survey_canvas(request: Request, survey_id: str):
     return templates.TemplateResponse(request, "_survey_canvas.html", {"row": row, "survey": row["spec"]})
 
 
+@app.get("/api/threads")
+def threads(limit: int = 30):
+    """Saved conversations, most recent first, titled by their first message."""
+    agent = get_agent()
+    saver = agent.checkpointer
+    if not isinstance(saver, SqliteSaver):
+        return {"threads": []}
+    saver.setup()
+    with saver.lock:
+        rows = saver.conn.execute("""SELECT thread_id FROM checkpoints WHERE checkpoint_ns = ''
+                                     GROUP BY thread_id ORDER BY MAX(checkpoint_id) DESC LIMIT ?""", (limit,)).fetchall()
+    out = []
+    for (thread_id,) in rows:
+        state = agent.get_state({"configurable": {"thread_id": thread_id}})
+        asks = [_text(m) for m in state.values.get("messages", []) if isinstance(m, HumanMessage)]
+        if asks:
+            out.append({"id": thread_id, "title": asks[0][:90], "turns": len(asks), "updated_at": state.created_at})
+    return {"threads": out}
+
+
 @app.get("/api/threads/{thread_id}")
 def thread(thread_id: str):
     state = get_agent().get_state({"configurable": {"thread_id": thread_id}})
@@ -213,6 +233,9 @@ def main() -> None:
 
     load_dotenv()
     get_agent()
+    from skills.campaign import service
+
+    service.start_scheduler()
     uvicorn.run(app, host=os.environ.get("FORMS_HOST", "127.0.0.1"), port=int(os.environ.get("FORMS_PORT", "8000")))
 
 

@@ -1,0 +1,450 @@
+{% extends "console.html" %}
+{% from "_icons.html" import icon, status_pill, verified_pill %}
+{% from "_questions.html" import render %}
+{% set active = "surveys" %}
+{% set st = progress.stats %}
+{% macro participant_pill(state) %}{% set p = PARTICIPANT.get(state, (state, "")) %}<span class="pill {{ p[1] }}">{{ p[0] }}</span>{% endmacro %}
+{% macro cond(c) %}{% if c.op is defined and c.conditions is defined %}<div class="cond-group"><span class="label">{{ "all of" if c.op == "and" else "any of" }}</span>{% for x in c.conditions %}{{ cond(x) }}{% endfor %}</div>{% else %}<div class="cond"><span class="mono">{{ c.field.split(".")[-2:]|join(".") if c.field else "" }}</span> <span class="faint">{{ OPS.get(c.type, c.type) }}</span> <b>{{ c.value|join(", ") if c.value is iterable and c.value is not string and c.value is not mapping else c.value }}</b></div>{% endif %}{% endmacro %}
+{% macro when(iso) %}{% if iso %}<time datetime="{{ iso }}" data-local>{{ iso[11:16] }}</time>{% else %}<span class="faint">—</span>{% endif %}{% endmacro %}
+{% macro event_line(e) %}
+  {% set who = e.target.name if e.target else "" %}
+  {% if e.type == "launched" %}{{ icon("arrow-right") }}<span>Fieldwork started · max {{ e.detail.max_invites }} invites, target {{ e.detail.target_responses }} responses</span>
+  {% elif e.type == "invited" %}{{ icon("mail") }}<span>Invited <b style="font-weight:500">{{ who }}</b> <span class="faint mono">{{ e.detail.email }}</span></span>
+  {% elif e.type == "followup" %}{{ icon("mail") }}<span>Follow-up {{ e.detail.n }} sent to <b style="font-weight:500">{{ who }}</b></span>
+  {% elif e.type == "opened" %}{{ icon("external") }}<span><b style="font-weight:500">{{ who }}</b> opened the survey</span>
+  {% elif e.type == "responded" %}{{ icon("check-circle") }}<span><b style="font-weight:500">{{ who }}</b> responded</span>
+  {% elif e.type == "opted_out" %}{{ icon("x-circle") }}<span><b style="font-weight:500">{{ who }}</b> opted out</span>
+  {% elif e.type == "closed" %}{{ icon("lock") }}<span>Survey closed · {{ e.detail.reason }}</span>
+  {% elif e.type == "config" %}{{ icon("clipboard") }}<span>Settings saved · max {{ e.detail.max_invites }} invites, target {{ e.detail.target_responses }}, deadline {{ e.detail.deadline_minutes }} min</span>
+  {% elif e.type == "insights" %}{{ icon("file") }}<span>Insights generated from {{ e.detail.n }} responses</span>
+  {% else %}{{ icon("clock") }}<span>{{ e.type }}</span>{% endif %}
+  {{ when(e.at) }}
+{% endmacro %}
+
+{% block title %}{{ survey.title }} · Verified Research{% endblock %}
+{% block head %}
+{% if tab in ("analytics", "audience") %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+{% endif %}
+{% endblock %}
+{% block crumbs %}<a href="/surveys">Surveys</a><span class="sep">/</span><b>{{ survey.title }}</b>{% endblock %}
+{% block actions %}
+  {% if row.status == "fielding" %}
+    <form method="post" action="/surveys/{{ row.id }}/nudge"><button class="btn" type="submit">{{ icon("mail") }} Nudge now</button></form>
+    <form method="post" action="/surveys/{{ row.id }}/close"><button class="btn" type="submit">{{ icon("lock") }} Close survey</button></form>
+  {% elif row.status == "closed" %}
+    <a class="btn btn-primary" href="/surveys/{{ row.id }}?tab=analytics">{{ icon("file") }} View analytics</a>
+  {% endif %}
+{% endblock %}
+
+{% block main %}
+<div class="page" style="max-width:1120px">
+  <div class="page-head">
+    <div>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        {{ status_pill(row.status) }}
+        <span class="tag">{{ survey.questions|length }} questions</span>
+        <span class="tag">~{{ survey.estimated_minutes }} min</span>
+        <span class="tag mono">{{ row.id }}</span>
+        {% if row.close_reason %}<span class="tag">Closed · {{ row.close_reason }}</span>{% endif %}
+      </div>
+      <h1>{{ survey.title }}</h1>
+      <p class="muted">{{ survey.research_question }}</p>
+    </div>
+  </div>
+
+  {% if error %}<div class="notice warn">{{ icon("alert") }}<div>{{ error }}</div></div>{% endif %}
+
+  <nav class="tabs" aria-label="Survey sections">
+    {% for key, label in TABS %}
+      <a href="/surveys/{{ row.id }}?tab={{ key }}" {% if tab == key %}aria-current="page"{% endif %}>{{ label }}
+        {% if key == "participants" %}<span class="count">{{ st.invited }}</span>{% endif %}
+        {% if key == "analytics" and st.responded %}<span class="count">{{ st.responded }}</span>{% endif %}
+      </a>
+    {% endfor %}
+  </nav>
+
+{# ======================= PROGRESS ======================= #}
+{% if tab == "progress" %}
+  {% set target = config.target_responses %}
+  <div class="kpis">
+    <div class="panel kpi">
+      <span class="cap">Responses</span>
+      <span class="v">{{ st.responded }} <small>/ {{ target }} target</small></span>
+      <div class="meterbar {{ 'ok' if st.responded >= target }}"><i style="width:{{ [st.responded / target * 100, 100]|min }}%"></i></div>
+    </div>
+    <div class="panel kpi">
+      <span class="cap">Invited</span>
+      <span class="v">{{ st.invited }} <small>/ {{ config.max_invites }} max</small></span>
+      <div class="meterbar"><i style="width:{{ [st.invited / config.max_invites * 100, 100]|min }}%"></i></div>
+    </div>
+    <div class="panel kpi">
+      <span class="cap">Response rate</span>
+      <span class="v">{{ ((st.responded / st.invited * 100)|round|int) if st.invited else 0 }}<small>%</small></span>
+      <span class="cap">{{ st.opened }} opened · {{ st.opted_out }} opted out</span>
+    </div>
+    <div class="panel kpi">
+      <span class="cap">{% if row.status == "closed" %}Closed{% elif row.status == "fielding" %}Time left{% else %}Deadline{% endif %}</span>
+      {% if row.status == "fielding" %}
+        <span class="v">{% if progress.minutes_left >= 120 %}{{ (progress.minutes_left / 60)|round(1) }}<small> h</small>{% else %}{{ progress.minutes_left }}<small> min</small>{% endif %}</span>
+        <div class="meterbar"><i style="width:{{ progress.time_elapsed_pct }}%"></i></div>
+      {% elif row.status == "closed" %}
+        <span class="v" style="font-size:18px">{{ row.close_reason or "closed" }}</span><span class="cap">{{ when(row.closed_at) }}</span>
+      {% else %}
+        <span class="v">{{ config.deadline_minutes }}<small> min after launch</small></span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if progress.recommendation %}
+    <div class="notice {{ 'ok' if progress.recommendation == 'on track' else 'warn' }}">
+      {{ icon("check-circle" if progress.recommendation == "on track" else "alert") }}
+      <div><b style="font-weight:500">Pace:</b> {{ progress.recommendation }}. {{ progress.target_pct }}% of target with {{ progress.time_elapsed_pct }}% of the time used.</div>
+    </div>
+  {% elif row.status in ("draft", "changes_requested") %}
+    <div class="notice warn">{{ icon("alert") }}<div>This survey needs approval before fieldwork can start. <a href="/surveys/{{ row.id }}?tab=survey">Review it</a>.</div></div>
+  {% elif row.status == "approved" %}
+    <div class="notice ok">{{ icon("check-circle") }}<div>Approved. Fieldwork starts when the agent launches the campaign with its targets.</div></div>
+  {% endif %}
+
+  <div class="grid-2">
+    <div class="stack">
+      <section class="panel panel-pad stack">
+        <div class="section-title"><h3>Funnel</h3><span class="cap">people</span></div>
+        {% set base = [st.invited, 1]|max %}
+        <div class="bars">
+          {% for label, n in [("Invited", st.invited), ("Opened", st.opened), ("Responded", st.responded), ("Opted out", st.opted_out)] %}
+          <div class="bar-row" title="{{ label }}: {{ n }}">
+            <span class="lbl">{{ label }}</span>
+            <span class="bar-track"><i style="width:{{ n / base * 100 }}%"></i></span>
+            <span class="val">{{ n }} <small>{{ ((n / st.invited * 100)|round|int) if st.invited else 0 }}%</small></span>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      <section class="panel panel-pad stack">
+        <div class="section-title"><h3>Responses over time</h3><span class="cap">cumulative, since launch</span></div>
+        {% if timeline %}
+          {% set peak = [timeline[-1].total, 1]|max %}
+          <div class="spark">{% for b in timeline %}<i style="height:{{ b.total / peak * 100 }}%" title="{{ b.total }} responses"></i>{% endfor %}</div>
+          <div style="display:flex; justify-content:space-between" class="cap"><span>Launch {{ when(row.launched_at) }}</span><span>{{ timeline[-1].total }} total</span></div>
+        {% else %}
+          <p class="cap">Starts when fieldwork launches.</p>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="stack">
+      <section class="panel panel-pad stack">
+        <div class="section-title"><h3>Fieldwork settings</h3></div>
+        <form method="post" action="/surveys/{{ row.id }}/config" class="stack" style="gap:12px">
+          <fieldset {% if row.status == "closed" %}disabled{% endif %} style="border:0; margin:0; padding:0; min-width:0">
+            <div class="settings">
+              <label for="max_invites">Max invites<input class="input" type="number" min="1" max="500" id="max_invites" name="max_invites" value="{{ config.max_invites }}"></label>
+              <label for="target_responses">Target responses<input class="input" type="number" min="1" max="500" id="target_responses" name="target_responses" value="{{ config.target_responses }}"></label>
+              <label for="deadline_minutes">Deadline (min after launch)<input class="input" type="number" min="5" id="deadline_minutes" name="deadline_minutes" value="{{ config.deadline_minutes }}"></label>
+              <label for="followup_after_minutes">Follow up after (min)<input class="input" type="number" min="1" id="followup_after_minutes" name="followup_after_minutes" value="{{ config.followup_after_minutes }}"></label>
+              <label for="max_followups">Max follow-ups<input class="input" type="number" min="0" max="3" id="max_followups" name="max_followups" value="{{ config.max_followups }}"></label>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap">
+              <button class="btn btn-primary" type="submit">Save settings</button>
+              <span class="cap">Closes automatically at the target or the deadline.</span>
+            </div>
+          </fieldset>
+        </form>
+      </section>
+      <section class="panel panel-pad stack">
+        <div class="section-title"><h3>Recent activity</h3><a class="cap" href="/surveys/{{ row.id }}?tab=activity">All activity</a></div>
+        {% if events %}
+          <div class="feed">{% for e in events %}<div class="feed-item">{{ event_line(e) }}</div>{% endfor %}</div>
+        {% else %}<p class="cap">Nothing yet.</p>{% endif %}
+      </section>
+    </div>
+  </div>
+
+{# ======================= PARTICIPANTS ======================= #}
+{% elif tab == "participants" %}
+  {% if participants %}
+  <div style="display:flex; gap:8px; flex-wrap:wrap">
+    {% for state, label in [("invited", "Invited"), ("opened", "Opened"), ("responded", "Responded"), ("opted_out", "Opted out"), ("expired", "No response")] %}
+      {% set n = participants|selectattr("state", "equalto", state)|list|length %}
+      {% if n %}<span class="tag">{{ label }} <b>{{ n }}</b></span>{% endif %}
+    {% endfor %}
+  </div>
+  <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Person</th><th>Company</th><th>Business email</th><th>Status</th><th>Invited</th><th>Follow-ups</th><th>Responded</th></tr></thead>
+      <tbody>
+      {% for p in participants %}{% set t = p.target %}
+        <tr>
+          <td class="idx">{{ loop.index }}</td>
+          <td>{% if t.linkedin_url %}<a href="{{ t.linkedin_url }}" target="_blank" rel="noopener">{{ t.name }}</a>{% else %}{{ t.name }}{% endif %}
+            <span class="sub">{{ t.title or "" }}{% if t.seniority %} · {{ t.seniority }}{% endif %}</span></td>
+          <td>{{ t.company or "—" }}<span class="sub">{% if t.company_headcount %}{{ "{:,}".format(t.company_headcount) }} people{% endif %}{% if t.location %} · {{ t.location }}{% endif %}</span></td>
+          <td class="mono">{{ p.email or "—" }}</td>
+          <td>{{ participant_pill(p.state) }}</td>
+          <td>{{ when(p.invited_at) }}</td>
+          <td class="num">{{ p.followups_sent }}</td>
+          <td>{{ when(p.submitted_at) }}</td>
+        </tr>
+        {% if t.why_qualified %}<tr><td></td><td colspan="7" class="cap" style="padding-top:0">Why: {{ t.why_qualified }}</td></tr>{% endif %}
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="panel empty-state"><h3>No participants yet</h3>
+    <p class="muted">When the survey is approved, ask the agent to launch it. Each invited person shows up here with their status.</p></div>
+  {% endif %}
+
+{# ======================= SURVEY ======================= #}
+{% elif tab == "survey" %}
+  <div class="review">
+    <section class="panel">
+      <div class="panel-head">{{ icon("user") }}<b style="font-weight:600">What respondents see</b><span class="cap" style="margin-left:auto">Preview · inputs disabled</span></div>
+      <div class="panel-pad" style="display:flex; flex-direction:column; gap:24px;">
+        <div class="intro-box">{{ survey.intro }}</div>
+        <fieldset class="preview" disabled>{{ render(survey, show_meta=true) }}</fieldset>
+      </div>
+    </section>
+    <aside>
+      <div class="panel">
+        <div class="side-block">
+          <div class="label">Approval</div>
+          {% if row.status in ("draft", "changes_requested") %}
+            {% if row.status == "changes_requested" and row.feedback %}
+            <div class="notice warn">{{ icon("alert") }}<div><b style="font-weight:500">Changes requested</b><br>{{ row.feedback }}</div></div>
+            <p class="cap">The agent reads this note and submits a revised version.</p>
+            {% else %}<p class="muted">Approving lets the agent start fieldwork. Nobody is contacted until then.</p>{% endif %}
+            <form method="post" action="/surveys/{{ row.id }}/approve"><button class="btn btn-primary" type="submit" style="width:100%">{{ icon("check-circle") }} Approve survey</button></form>
+            <form method="post" action="/surveys/{{ row.id }}/request-changes" style="display:flex; flex-direction:column; gap:8px;">
+              <label class="cap" for="feedback">Or tell the agent what to change</label>
+              <textarea class="input" id="feedback" name="feedback" placeholder="e.g. Drop the spend question, add a 'Don't know' option to Q3"></textarea>
+              <button class="btn" type="submit">Request changes</button>
+            </form>
+          {% elif row.status == "approved" %}
+            <div class="notice ok">{{ icon("check-circle") }}<div>Approved {{ when(row.approved_at) }}. Ready for fieldwork.</div></div>
+            <form method="post" action="/surveys/{{ row.id }}/request-changes" style="display:flex; flex-direction:column; gap:8px;">
+              <label class="cap" for="feedback">Reopen before anyone is invited</label>
+              <input class="input" id="feedback" name="feedback" placeholder="What should change?">
+              <button class="btn" type="submit">Request changes</button>
+            </form>
+          {% else %}
+            <p class="muted">{{ "In the field." if row.status == "fielding" else "Closed." }} The questionnaire is locked.</p>
+          {% endif %}
+        </div>
+        <div class="side-block">
+          <div class="label">Brief</div>
+          <dl class="facts">
+            <div><dt>Research question</dt><dd>{{ survey.research_question }}</dd></div>
+            <div><dt>Audience</dt><dd>{{ survey.audience }}</dd></div>
+          </dl>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+{# ======================= AUDIENCE ======================= #}
+{% elif tab == "audience" %}
+  {% if audience %}
+  <div class="grid-2">
+    <div class="stack">
+      <section class="panel panel-pad stack">
+        <div class="section-title"><h3>Persona</h3>{% if audience.total_count is not none %}<span class="cap"><b class="num" style="color:var(--fg)">{{ "{:,}".format(audience.total_count) }}</b> people matched in Crustdata</span>{% endif %}</div>
+        <p style="font-size:15px">{{ audience.description }}</p>
+        {% if audience.plan %}
+        <div class="kv-chips">
+          {% for k, v in audience.plan.items() if v not in (none, "", [], {}) %}
+            <span class="tag">{{ k|humanize }} <b>{{ v|join(", ") if v is iterable and v is not string and v is not mapping else v }}</b></span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </section>
+      <section class="panel panel-pad stack">
+        <div class="section-title"><h3>Crustdata filters sent</h3><span class="cap mono">POST /person/search</span></div>
+        {% if audience.effective_filters %}
+          {% set ef = audience.effective_filters %}
+          <div class="conds">{% if ef is mapping %}{{ cond(ef) }}{% else %}{% for c in ef %}{{ cond(c) }}{% endfor %}{% endif %}</div>
+          <details><summary class="cap" style="cursor:pointer">Raw filter JSON</summary>
+            <pre class="log" style="max-height:480px; margin-top:8px">{{ ef|tojson(indent=2) }}</pre></details>
+        {% else %}<p class="cap">Not recorded.</p>{% endif %}
+      </section>
+    </div>
+    <div class="stack">
+      <section class="panel panel-pad stack">
+        <div class="section-title"><h3>Reach</h3></div>
+        <div class="stat-row">
+          <div><span class="cap">Matched</span><b>{{ "{:,}".format(audience.total_count) if audience.total_count is not none else "—" }}</b></div>
+          <div><span class="cap">Invited</span><b>{{ st.invited }}</b></div>
+          <div><span class="cap">Responded</span><b>{{ st.responded }}</b></div>
+        </div>
+      </section>
+      {% if audience.brief %}
+      <section class="panel panel-pad stack">
+        <div class="section-title"><h3>Research brief</h3></div>
+        <div class="prose" id="brief"></div>
+        <script type="text/markdown" id="brief-md">{{ audience.brief }}</script>
+      </section>
+      {% endif %}
+      {% if audience.plan %}
+      <details class="panel panel-pad">
+        <summary class="cap" style="cursor:pointer">Search plan the agent wrote</summary>
+        <pre class="log" style="margin-top:10px">{{ audience.plan|tojson(indent=2) }}</pre>
+      </details>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="panel empty-state"><h3>No audience recorded yet</h3>
+    <p class="muted">The agent records the persona and the exact Crustdata filters it used when it launches the campaign.</p></div>
+  {% endif %}
+
+{# ======================= ANALYTICS ======================= #}
+{% elif tab == "analytics" %}
+  {% set f = stats.funnel %}
+  <div class="kpis">
+    <div class="panel kpi"><span class="cap">Responses analysed</span><span class="v">{{ f.counted }}</span></div>
+    <div class="panel kpi"><span class="cap">Response rate</span><span class="v">{{ stats.response_rate_pct|round|int }}<small>%</small></span><span class="cap">{{ f.responded }} of {{ f.invited }} invited</span></div>
+    <div class="panel kpi"><span class="cap">Opened</span><span class="v">{{ f.opened }}</span></div>
+    <div class="panel kpi"><span class="cap">Opted out</span><span class="v">{{ f.opted_out }}</span></div>
+  </div>
+
+  <section class="panel panel-pad stack">
+    <div class="section-title"><h3>Findings</h3>
+      {% if insights %}<span class="cap">Generated {{ when(insights.generated_at) }} from {{ insights.stats.funnel.counted }} responses</span>{% endif %}
+    </div>
+    {% if insights %}
+      <div class="prose" id="report"></div>
+      <script type="text/markdown" id="report-md">{{ insights.report }}</script>
+    {% elif f.counted %}
+      <p class="muted">Write the findings report from the {{ f.counted }} responses so far. Closing the survey first gives the final picture.</p>
+    {% else %}
+      <p class="muted">No responses yet. Findings appear once people answer.</p>
+    {% endif %}
+    {% if f.counted %}
+    <form method="post" action="/surveys/{{ row.id }}/insights" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button span').textContent = 'Writing findings…'">
+      <button class="btn {{ '' if insights else 'btn-primary' }}" type="submit">{{ icon("file") }} <span>{{ "Regenerate findings" if insights else "Generate findings" }}</span></button>
+    </form>
+    {% endif %}
+  </section>
+
+  {% if f.counted %}
+  <div class="stack">
+    {% for q in stats.questions %}
+    <section class="panel panel-pad stack">
+      <div class="q-head" style="grid-template-columns: 34px minmax(0,1fr) auto">
+        <span class="q-num">Q{{ loop.index }}</span><span class="q-prompt">{{ q.prompt }}</span><span class="cap num">n = {{ q.n }}</span>
+      </div>
+      <div style="padding-left:44px" class="stack">
+      {% if q.type in ("single_choice", "multi_choice") %}
+        {% set peak = [q.options|map(attribute="count")|max, 1]|max %}
+        <div class="bars">
+          {% for o in q.options %}
+          <div class="bar-row" title="{{ o.label }}: {{ o.count }} of {{ q.n }} ({{ o.pct }}%)">
+            <span class="lbl">{{ o.label }}</span>
+            <span class="bar-track"><i style="width:{{ o.count / peak * 100 }}%"></i></span>
+            <span class="val">{{ o.pct|round|int }}% <small>{{ o.count }}</small></span>
+          </div>
+          {% endfor %}
+        </div>
+        {% if q.type == "multi_choice" %}<span class="cap">Share of respondents who selected each option.</span>{% endif %}
+        {% if q.other_text %}<span class="cap">Other: {{ q.other_text|join(" · ") }}</span>{% endif %}
+      {% elif q.type == "scale" %}
+        {% set peak = [q.distribution|map(attribute="count")|max, 1]|max %}
+        <div class="stat-row">
+          {% if q.mean is defined %}<div><span class="cap">Average</span><b>{{ q.mean }}</b></div>{% endif %}
+          {% if q.nps is defined %}<div><span class="cap">NPS</span><b>{{ q.nps }}</b></div>{% endif %}
+        </div>
+        <div>
+          <div class="cols">{% for d in q.distribution %}<div class="col" title="{{ d.label }}: {{ d.count }} ({{ d.pct }}%)"><span>{{ d.count if d.count else "" }}</span><i style="height:{{ d.count / peak * 80 }}%"></i></div>{% endfor %}</div>
+          <div class="col-labels" style="margin-top:6px">{% for d in q.distribution %}<span>{{ d.label }}</span>{% endfor %}</div>
+          {% if q.min_label or q.max_label %}<div class="scale-ends" style="margin-top:4px"><span>{{ q.min_label or "" }}</span><span>{{ q.max_label or "" }}</span></div>{% endif %}
+        </div>
+      {% elif q.type == "number" %}
+        {% if q.n %}
+        <div class="stat-row">
+          <div><span class="cap">Median</span><b>{{ "{:,.0f}".format(q.median) }}</b></div>
+          {% if q.p25 is defined %}<div><span class="cap">Middle 50%</span><b>{{ "{:,.0f}".format(q.p25) }}–{{ "{:,.0f}".format(q.p75) }}</b></div>{% endif %}
+          <div><span class="cap">Range</span><b>{{ "{:,.0f}".format(q.min) }}–{{ "{:,.0f}".format(q.max) }}</b></div>
+          <div><span class="cap">Mean</span><b>{{ "{:,.0f}".format(q.mean) }}</b></div>
+        </div>
+        {% else %}<p class="cap">No answers.</p>{% endif %}
+      {% else %}
+        {% for a in q.answers[:12] %}<div class="quote"><span>“{{ a.text }}”</span><span class="cap">{{ a.who }}</span></div>
+        {% else %}<p class="cap">No answers.</p>{% endfor %}
+      {% endif %}
+      </div>
+    </section>
+    {% endfor %}
+
+    <section class="panel panel-pad stack">
+      <div class="section-title"><h3>Segments</h3>
+        <div class="seg-switch" style="margin-left:auto">
+          {% for key, label in segments.items() %}<a href="/surveys/{{ row.id }}?tab=analytics&split={{ key }}#segments" aria-current="{{ 'true' if split == key else 'false' }}">{{ label }}</a>{% endfor %}
+        </div>
+      </div>
+      {% set seg = stats.segments[split] %}
+      <div class="kv-chips" id="segments">{% for value, n in seg.mix.items() %}<span class="tag">{{ value }} <b>{{ n }}</b></span>{% endfor %}</div>
+      {% for q in survey.questions if q.type == "single_choice" and seg.splits.get(q.id) %}
+        {% set table = seg.splits[q.id] %}
+        <div class="stack" style="gap:8px">
+          <span class="cap">{{ q.prompt }}</span>
+          <div class="tbl-wrap"><table class="tbl">
+            <thead><tr><th>Answer</th>{% for value in seg.mix %}<th>{{ value }} <span class="faint">n={{ seg.mix[value] }}</span></th>{% endfor %}</tr></thead>
+            <tbody>
+              {% for opt in q.options + (["Other"] if q.allow_other else []) %}{% set oi = loop.index0 %}
+              <tr><td>{{ opt }}</td>
+                {% for value in seg.mix %}{% set cell = table[value][oi] %}
+                <td class="num" title="{{ value }} · {{ opt }}: {{ cell.count }} of {{ seg.mix[value] }}"><span class="mini"><i style="width:{{ cell.pct }}%"></i></span>{{ cell.pct|round|int }}%</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table></div>
+        </div>
+      {% endfor %}
+      {% if seg.mix|length < 2 %}<p class="cap">All respondents fall in one {{ seg.label|lower }} group so far, so there's nothing to compare.</p>{% endif %}
+    </section>
+  </div>
+  {% endif %}
+
+{# ======================= ACTIVITY ======================= #}
+{% elif tab == "activity" %}
+  <div class="grid-2">
+    <section class="panel panel-pad stack">
+      <div class="section-title"><h3>Activity</h3><span class="cap">{{ events|length }} events</span></div>
+      {% if events %}<div class="feed">{% for e in events %}<div class="feed-item">{{ event_line(e) }}</div>{% endfor %}</div>
+      {% else %}<p class="cap">Nothing yet.</p>{% endif %}
+    </section>
+    <section class="panel panel-pad stack">
+      <div class="section-title"><h3>Outbox</h3><span class="pill warn">Log mode · not sent</span></div>
+      {% if outbox %}
+        <div>{% for m in outbox %}
+          <details class="mail">
+            <summary><span class="tag">{{ m.kind }}</span><span class="subj">{{ m.subject }}<span class="sub cap mono" style="display:block">{{ m.to_email }}</span></span>{{ when(m.created_at) }}</summary>
+            <pre class="log">{{ m.body }}</pre>
+          </details>
+        {% endfor %}</div>
+      {% else %}<p class="cap">Emails appear here as the campaign sends them.</p>{% endif %}
+    </section>
+  </div>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  document.querySelectorAll("time[data-local]").forEach(t => {
+    const d = new Date(t.getAttribute("datetime"));
+    if (!isNaN(d)) { t.textContent = d.toLocaleString([], {month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"}); t.title = d.toString(); }
+  });
+  [["report-md", "report"], ["brief-md", "brief"]].forEach(([src, dst]) => {
+    const md = document.getElementById(src), out = document.getElementById(dst);
+    if (!md || !out) return;
+    out.innerHTML = window.marked && window.DOMPurify ? DOMPurify.sanitize(marked.parse(md.textContent, {breaks: true})) : "";
+    if (!out.innerHTML) { out.style.whiteSpace = "pre-wrap"; out.textContent = md.textContent; }
+  });
+</script>
+{% endblock %}

@@ -14,7 +14,7 @@ You write the questionnaire. Our own form server hosts it, so every link is tied
 3. `form_get_survey`: check the status.
    - `changes_requested`: read `feedback` and call `form_revise_survey` with the full revised survey. That sends it back to draft.
    - `approved`: go on to step 4.
-4. `form_create_invite_links`: pass the verified targets (target records from Crustdata). You get one URL per person. Each URL works once and only for that person. Never send one link to several people.
+4. Fieldwork belongs to the campaign skill: `campaign_launch` creates the links and sends the invites. Use `form_create_invite_links` only when the user wants raw links without emails. Each URL works once and only for that person. Never send one link to several people.
 5. `form_get_responses`: answers, each bound to its `crustdata_person_id`, plus invited/opened/responded counts. Only analyse rows whose `verified` is not `fail`.
 
 If a tool refuses (`not_approved`, `locked`, `invalid_survey`), read the error and fix the call. Do not work around approval.

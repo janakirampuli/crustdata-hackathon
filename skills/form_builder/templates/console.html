@@ -14,6 +14,8 @@
         <span class="count" data-rail-count>{{ rail_surveys|length }}</span></a>
     </nav>
 
+    {% block rail_extra %}{% endblock %}
+
     <section class="rail-section">
       <div class="label">Studies</div>
       <div class="studies" data-rail-studies>

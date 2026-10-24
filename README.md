@@ -33,6 +33,13 @@ skills/
     tools.py            search_people, enrich_person, enrich_contact (mock via CRUSTDATA_MOCK_CONTACT_ENRICH), identify_company,
                         search_companies, search_jobs, get_credits
     reference/person_filter_catalog.json
+  campaign/     fieldwork for an approved survey (1 survey = 1 campaign)
+    SKILL.md            lifecycle: configure → launch → monitor/nudge → close → report
+    service.py          launch (respects max_invites), follow-ups, auto-close at target/deadline, 30s scheduler
+    mailer.py           invite + follow-up emails; EMAIL_MODE=log writes them to the outbox (no real sending yet)
+    analytics.py        funnel, per-question stats, segment splits by seniority / function / company size
+    insights.py         findings report from the stats (one model call; INSIGHTS_MODEL overrides AGENT_MODEL)
+    tools.py            campaign_configure, campaign_launch, campaign_status, campaign_nudge, campaign_close, campaign_report
   form_builder/ survey drafting, human approval, one identity-bound link per target
     SKILL.md            lifecycle + questionnaire design rules + standard methods (PMF, NPS, Van Westendorp)
     schema.py           Survey / Question spec the LLM writes, server-side answer validation
