@@ -10,10 +10,15 @@ dependencies = [
     "pycountry>=24.6",
     "pydantic>=2.7",
     "python-dotenv>=1.0",
+    "fastapi>=0.159.1",
+    "uvicorn>=0.54.0",
+    "jinja2>=3.1.6",
+    "python-multipart>=0.0.32",
 ]
 
 [project.scripts]
 agent = "agent.cli:main"
+forms = "skills.form_builder.server:main"
 
 [dependency-groups]
 dev = ["pytest>=8"]

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Surveys{% endblock %}
+{% block body %}
+<h1>Surveys</h1>
+<p class="muted">Drafts the agent wrote. Open one to review and approve it before any invite link goes live.</p>
+{% if not surveys %}
+  <div class="card muted">No surveys yet. Ask the agent to draft one.</div>
+{% endif %}
+{% for s in surveys %}
+  <a href="/surveys/{{ s.id }}" style="text-decoration: none; color: inherit;">
+    <div class="card">
+      <div class="row" style="justify-content: space-between;">
+        <strong>{{ s.spec.title }}</strong>
+        <span class="badge s-{{ s.status }}">{{ s.status.replace("_", " ") }}</span>
+      </div>
+      <div class="muted small" style="margin-top: 6px;">{{ s.spec.research_question }}</div>
+      <div class="muted small" style="margin-top: 6px;">
+        {{ s.spec.questions|length }} questions · v{{ s.version }} · {{ s.invites }} invited · {{ s.responses }} responses · {{ s.updated_at[:16].replace("T", " ") }} UTC
+      </div>
+    </div>
+  </a>
+{% endfor %}
+{% endblock %}

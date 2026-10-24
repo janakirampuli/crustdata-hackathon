@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_questions.html" import render %}
+{% block title %}{{ survey.title }}{% endblock %}
+{% block body %}
+<h1>{{ survey.title }}</h1>
+<p class="muted small">About {{ survey.estimated_minutes }} min · {{ survey.questions|length }} questions</p>
+{% if target.name %}<p>Hi {{ target.name.split(" ")[0] }},</p>{% endif %}
+<p style="white-space: pre-line;">{{ survey.intro }}</p>
+{% if errors %}<p class="q-error">Some answers need attention. They're marked below.</p>{% endif %}
+<form method="post" action="/s/{{ token }}" class="card">
+  {{ render(survey, values, errors) }}
+  <div style="margin-top: 24px;"><button class="primary" type="submit">Submit answers</button></div>
+</form>
+{% endblock %}

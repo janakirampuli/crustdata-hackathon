@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_questions.html" import render %}
+{% block title %}Review · {{ survey.title }}{% endblock %}
+{% block body %}
+<p class="small"><a href="/surveys">← All surveys</a></p>
+<div class="row" style="justify-content: space-between;">
+  <h1>{{ survey.title }}</h1>
+  <span class="badge s-{{ row.status }}">{{ row.status.replace("_", " ") }}</span>
+</div>
+<p class="muted small">v{{ row.version }} · {{ survey.questions|length }} questions · ~{{ survey.estimated_minutes }} min</p>
+
+<div class="card">
+  <div class="small muted">Research question</div>
+  <div>{{ survey.research_question }}</div>
+  <div class="small muted" style="margin-top: 12px;">Audience</div>
+  <div>{{ survey.audience }}</div>
+</div>
+
+{% if row.status in ("draft", "changes_requested") %}
+<div class="card">
+  {% if row.status == "changes_requested" and row.feedback %}
+    <p><strong>Changes requested:</strong> {{ row.feedback }}</p>
+    <p class="muted small">The agent can read this feedback and submit a revised version.</p>
+  {% endif %}
+  <form method="post" action="/surveys/{{ row.id }}/approve" style="margin-bottom: 16px;">
+    <button class="primary" type="submit">Approve survey</button>
+  </form>
+  <form method="post" action="/surveys/{{ row.id }}/request-changes">
+    <textarea name="feedback" placeholder="What should the agent change?"></textarea>
+    <div style="margin-top: 8px;"><button type="submit">Request changes</button></div>
+  </form>
+</div>
+{% elif row.status == "approved" %}
+<div class="card">
+  <p style="margin-top: 0;"><strong>Approved</strong> {{ row.approved_at[:16].replace("T", " ") }} UTC. Invite links are live.</p>
+  <p class="muted small">{{ stats.invited }} invited · {{ stats.opened }} opened · {{ stats.responded }} responded</p>
+  <div class="row">
+    {% if not stats.invited %}
+    <form method="post" action="/surveys/{{ row.id }}/request-changes" class="row">
+      <input type="text" name="feedback" placeholder="Reopen with feedback" style="width: auto; flex: 1;">
+      <button type="submit">Request changes</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/surveys/{{ row.id }}/close"><button type="submit">Close survey</button></form>
+  </div>
+</div>
+{% else %}
+<div class="card muted">Closed. Links no longer accept answers. {{ stats.responded }} of {{ stats.invited }} invited responded.</div>
+{% endif %}
+
+<h2>What respondents see</h2>
+<div class="card">
+  <p style="margin-top: 0; white-space: pre-line;">{{ survey.intro }}</p>
+  <fieldset disabled>
+    {{ render(survey, show_meta=true) }}
+  </fieldset>
+</div>
+
+{% if responses %}
+<h2>Responses ({{ responses|length }})</h2>
+<div class="card table-wrap">
+  <table>
+    <tr><th>Respondent</th><th>Verified</th><th>Answers</th></tr>
+    {% for r in responses %}
+    <tr>
+      <td>
+        <strong>{{ r.target.name }}</strong><br>
+        <span class="muted small">{{ r.target.title or "" }}{% if r.target.company %} · {{ r.target.company }}{% endif %}</span><br>
+        <span class="muted small">{{ r.submitted_at[:16].replace("T", " ") }} UTC</span>
+      </td>
+      <td><span class="badge v-{{ r.verified }}">{{ r.verified }}</span>{% if r.reason %}<div class="small muted">{{ r.reason }}</div>{% endif %}</td>
+      <td>
+        {% for q in survey.questions if q.id in r.answers %}
+          <div class="small"><span class="muted">{{ q.id }}:</span> {{ r.answers[q.id] | join(", ") if r.answers[q.id] is iterable and r.answers[q.id] is not string else r.answers[q.id] }}</div>
+        {% endfor %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

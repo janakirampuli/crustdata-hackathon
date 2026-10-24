@@ -1,0 +1,40 @@
+{% macro render(survey, values={}, errors={}, show_meta=false) %}
+{% for q in survey.questions %}
+{% set picked = values.get(q.id, []) %}
+<div class="q">
+  <div class="q-prompt">{{ loop.index }}. {{ q.prompt }}{% if not q.required %} <span class="muted small">(optional)</span>{% endif %}</div>
+  {% if show_meta %}<div class="q-meta">{{ q.id }} · {{ q.type }}</div>{% endif %}
+  {% if q.help %}<div class="q-help muted small">{{ q.help }}</div>{% endif %}
+
+  {% if q.type in ("single_choice", "multi_choice") %}
+    {% set kind = "radio" if q.type == "single_choice" else "checkbox" %}
+    {% if q.type == "multi_choice" %}<div class="muted small">Select all that apply.</div>{% endif %}
+    {% for opt in q.options %}
+      <label class="opt"><input type="{{ kind }}" name="{{ q.id }}" value="{{ opt }}" {% if opt in picked %}checked{% endif %}> <span>{{ opt }}</span></label>
+    {% endfor %}
+    {% if q.allow_other %}
+      <label class="opt"><input type="{{ kind }}" name="{{ q.id }}" value="{{ OTHER }}" {% if OTHER in picked %}checked{% endif %}> <span>Other</span></label>
+      <input type="text" name="{{ q.id }}__other" placeholder="Please specify" value="{{ values.get(q.id ~ '__other', [''])[0] }}">
+    {% endif %}
+
+  {% elif q.type == "scale" %}
+    <div class="scale">
+      {% for n in range(q.scale_min, q.scale_max + 1) %}
+        <label><input type="radio" name="{{ q.id }}" value="{{ n }}" {% if n|string in picked %}checked{% endif %}>{{ n }}</label>
+      {% endfor %}
+    </div>
+    {% if q.min_label or q.max_label %}
+      <div class="scale-labels"><span>{{ q.min_label or "" }}</span><span>{{ q.max_label or "" }}</span></div>
+    {% endif %}
+
+  {% elif q.type == "number" %}
+    <input type="number" step="any" name="{{ q.id }}" value="{{ picked[0] if picked else '' }}">
+
+  {% else %}
+    <textarea name="{{ q.id }}">{{ picked[0] if picked else '' }}</textarea>
+  {% endif %}
+
+  {% if errors.get(q.id) %}<div class="q-error">{{ errors[q.id] }}</div>{% endif %}
+</div>
+{% endfor %}
+{% endmacro %}
