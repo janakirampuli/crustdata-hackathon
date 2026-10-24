@@ -143,6 +143,9 @@ def workspace(request: Request, survey_id: str, tab: str | None = None, split: s
         ctx["split"] = split if split in analytics.SEGMENTS else "seniority"
         ctx["segments"] = analytics.SEGMENTS
         ctx["insights"] = store.get_insights(survey_id)
+        from skills.campaign import service
+
+        ctx["writing"] = service.writing_findings(survey_id)
     elif tab == "activity":
         ctx["events"] = store.list_events(survey_id)
         ctx["outbox"] = store.list_outbox(survey_id)

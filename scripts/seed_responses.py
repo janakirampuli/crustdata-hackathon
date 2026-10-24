@@ -1,7 +1,7 @@
 """Seeds responses into a survey the agent has already launched, so a demo can show answers, quality ranks and the
 findings report without waiting days for real people. The survey, invite email, audience and campaign stay as the
 agent made them. This adds only what respondents would do: opens, opt-outs and answers that a model writes to fit
-each invitee's role and company size. Then ask the agent to close the survey and write the report.
+each invitee's role and company size.
 
 The invitees are real people from Crustdata, so before writing anything the script gives each one a fictional name,
 company, company size and email (role, seniority and function stay). Made-up answers never sit under a real person's
@@ -12,7 +12,8 @@ name. The outbox keeps the emails exactly as the agent drafted them.
 
 Planted for the checks to catch (with 10+ responses): two answers that fail verification (one left the company, one a
 duplicate device), one 20-second speeder that is flagged, and one straight-lined, pasted answer the quality check ranks
-low. If the responses reach the target, the survey closes as it would live.
+low. If the responses reach the target, the survey closes as it would live and the findings report is written
+(skip it with --no-report, then ask the agent to write it on camera).
 """
 
 import argparse
@@ -232,7 +233,7 @@ def straight_lined(survey: Survey) -> dict:
 # --- seeding -------------------------------------------------------------------------------------------------------
 
 def seed(survey_id: str, responses: int | None = None, hours: float = 6, story: str | None = None,
-         seed_value: int = 7, review: bool = True) -> dict:
+         seed_value: int = 7, review: bool = True, report: bool = True) -> dict:
     rng = random.Random(seed_value)
     row = store.get_survey(survey_id)
     if row is None or row["status"] != "fielding":
@@ -327,11 +328,16 @@ def seed(survey_id: str, responses: int | None = None, hours: float = 6, story: 
             with ThreadPoolExecutor(max_workers=4) as pool:
                 list(pool.map(lambda tok: quality.review_text(survey_id, tok), tokens))
         clock.t = now
-        service.after_response(survey_id)
+        service.after_response(survey_id, report=False)
     finally:
         store._now = real_now
+    findings = False
+    if report and store.get_survey(survey_id)["status"] == "closed":
+        from skills.campaign import insights
+
+        findings = "error" not in insights.generate(survey_id)
     return {"responses": n, "opened": len(openers), "opted_out": len(opt_outs), "planted": len(plants),
-            "status": store.get_survey(survey_id)["status"]}
+            "status": store.get_survey(survey_id)["status"], "findings": findings}
 
 
 def main() -> None:
@@ -343,12 +349,15 @@ def main() -> None:
     parser.add_argument("--story", help="The pattern the answers should show, e.g. 'freshness beats price for managers'.")
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--no-review", action="store_true", help="Skip the model review of open text.")
+    parser.add_argument("--no-report", action="store_true", help="Don't write the findings report when it closes.")
     args = parser.parse_args()
-    result = seed(args.survey_id, args.responses, args.hours, args.story, args.seed, review=not args.no_review)
+    result = seed(args.survey_id, args.responses, args.hours, args.story, args.seed, review=not args.no_review,
+                  report=not args.no_report)
     from skills.form_builder.tools import base_url
 
     print(f"{result['responses']} responses, {result['opened']} more opens, {result['opted_out']} opt-outs, "
-          f"{result['planted']} planted; survey is {result['status']}.")
+          f"{result['planted']} planted; survey is {result['status']}"
+          f"{', findings written' if result['findings'] else ''}.")
     print(f"{base_url()}/surveys/{args.survey_id}?tab=responses")
 
 

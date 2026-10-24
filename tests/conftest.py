@@ -11,3 +11,9 @@ def isolated_forms_db(tmp_path, monkeypatch):
 def no_model_review(monkeypatch):
     """Quality review calls a model in the background; tests score with rules only."""
     monkeypatch.setenv("QUALITY_REVIEW", "off")
+
+
+@pytest.fixture(autouse=True)
+def no_findings_on_close(monkeypatch):
+    """Closing a survey writes the findings with a model call in the background; tests don't."""
+    monkeypatch.setenv("FINDINGS_ON_CLOSE", "off")

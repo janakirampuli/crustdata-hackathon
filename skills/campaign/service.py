@@ -1,6 +1,7 @@
 """Campaign mechanics: launch, follow-ups, auto-close and progress. Plain code; the agent calls it through tools,
 the workspace UI through the form server, and a background thread runs `tick` every 30s."""
 
+import os
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -105,17 +106,45 @@ def send_followups(survey_id: str, force: bool = False) -> list[dict]:
     return sent
 
 
-def close(survey_id: str, reason: str) -> bool:
+_writing: set[str] = set()
+
+
+def writing_findings(survey_id: str) -> bool:
+    return survey_id in _writing
+
+
+def write_findings(survey_id: str) -> None:
+    """Writes the findings report in the background; the model call takes about a minute."""
+    if os.environ.get("FINDINGS_ON_CLOSE", "on") == "off" or survey_id in _writing:
+        return
+
+    def run():
+        from . import insights
+
+        try:
+            insights.generate(survey_id)
+        except Exception as e:
+            print(f"[campaign] findings failed for {survey_id}: {type(e).__name__}: {e}")
+        finally:
+            _writing.discard(survey_id)
+
+    _writing.add(survey_id)
+    threading.Thread(target=run, name=f"findings-{survey_id}", daemon=True).start()
+
+
+def close(survey_id: str, reason: str, report: bool = True) -> bool:
     if store.close_survey(survey_id, reason):
         store.log_event(survey_id, "closed", detail={"reason": reason})
+        if report:
+            write_findings(survey_id)
         return True
     return False
 
 
-def after_response(survey_id: str) -> None:
+def after_response(survey_id: str, report: bool = True) -> None:
     row = store.get_survey(survey_id)
     if row and row["status"] == "fielding" and store.invite_stats(survey_id)["responded"] >= row["config"].target_responses:
-        close(survey_id, "target reached")
+        close(survey_id, "target reached", report)
 
 
 def status(survey_id: str) -> dict:

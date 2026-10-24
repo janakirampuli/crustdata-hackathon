@@ -91,7 +91,7 @@ def close(survey_id: str, reason: str = "closed by agent") -> dict:
     """End fieldwork: links stop accepting answers. Do this before generating the final report."""
     if store.get_survey(survey_id) is None:
         return {"error": "not_found", "survey_id": survey_id}
-    closed = service.close(survey_id, reason)
+    closed = service.close(survey_id, reason, report=False)  # campaign_report writes the findings
     return {"survey_id": survey_id, "closed": closed, **service.status(survey_id)}
 
 

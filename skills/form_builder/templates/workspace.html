@@ -391,13 +391,17 @@
     {% if insights %}
       <div class="prose" id="report"></div>
       <script type="text/markdown" id="report-md">{{ insights.report }}</script>
+    {% elif writing %}
+      <p class="muted">Writing the findings report from the {{ f.counted }} counted responses. It takes about a minute; refresh to see it.</p>
+    {% elif f.counted and row.status == "closed" %}
+      <p class="muted">Write the findings report from the {{ f.counted }} counted responses.</p>
     {% elif f.counted %}
       <p class="muted">Write the findings report from the {{ f.counted }} responses so far. Closing the survey first gives the final picture.</p>
     {% else %}
       <p class="muted">No responses yet. Findings appear once people answer.</p>
     {% endif %}
-    {% if f.counted %}
-    <form method="post" action="/surveys/{{ row.id }}/insights" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button span').textContent = 'Writing findings…'">
+    {% if f.counted and not writing %}
+    <form method="post" action="/surveys/{{ row.id }}/insights" onsubmit="this.querySelector('button').disabled = true; this.querySelector('button span').textContent = 'Writing findings, about a minute…'">
       <button class="btn {{ '' if insights else 'btn-primary' }}" type="submit">{{ icon("file") }} <span>{{ "Regenerate findings" if insights else "Generate findings" }}</span></button>
     </form>
     {% endif %}

@@ -30,7 +30,7 @@ def test_seeds_answers_into_the_agents_campaign_with_fictional_names(monkeypatch
     launch(survey_id, [target(i) for i in range(20)])
     real_names = {f"Person {i}" for i in range(20)}
 
-    result = seed_responses.seed(survey_id, responses=12, hours=6, review=False)
+    result = seed_responses.seed(survey_id, responses=12, hours=6, review=False, report=False)
 
     row = store.get_survey(survey_id)
     assert result["responses"] == 12 and row["status"] == "closed" and row["close_reason"] == "target reached"

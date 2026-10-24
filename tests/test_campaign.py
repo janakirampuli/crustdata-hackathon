@@ -1,3 +1,4 @@
+import threading
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -244,3 +245,17 @@ def test_brief_saved_with_the_draft_reaches_the_audience_at_launch():
     store.set_status(survey_id, "approved")
     launch(survey_id, [target(1)])
     assert store.get_survey(survey_id)["audience"].brief == "**H1:** teams scrape."
+
+
+def test_closing_writes_the_findings_unless_the_agent_will(monkeypatch):
+    from skills.campaign import insights, service
+
+    monkeypatch.setenv("FINDINGS_ON_CLOSE", "on")
+    written = []
+    monkeypatch.setattr(insights, "generate", lambda survey_id: written.append(survey_id) or {})
+    for survey_id, report in ((approved_survey(), True), (approved_survey(), False)):
+        launch(survey_id, [target(0)])
+        service.close(survey_id, "test", report=report)
+    for t in [t for t in threading.enumerate() if t.name.startswith("findings-")]:
+        t.join(5)
+    assert len(written) == 1
