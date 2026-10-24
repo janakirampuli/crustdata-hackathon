@@ -20,6 +20,7 @@ One approved survey is one campaign. Every person invited, every email and every
    - Use the email on the current employer's domain.
    - Prefer `deliverable` emails over `catch_all`.
    - Never guess an email.
+   - If the lookup returns `mocked: true`, the addresses are test addresses on purpose (`.invalid` or the team inbox). The mailer records them and never reaches the person, so launch with them as given and say they are mock addresses.
 3. **Launch.** `campaign_launch` only works on an approved survey. Pass:
    - **`targets`:** full target records. Copy `headline`, `seniority`, `function`, `company_headcount`, `role_start_date` and `location` from the search rows: the invite's personal line is written only from these facts, and the analysis splits by them.
    - **`audience`:** the persona description; and the exact `plan`, `effective_filters` and `total_count` of the search the targets came from. This is what the Participants tab shows. The brief saved with the survey is filled in for you; pass `brief` only if it changed since the draft.

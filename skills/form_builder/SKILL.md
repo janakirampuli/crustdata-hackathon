@@ -43,7 +43,7 @@ The client approves the template once; nobody reviews the individual emails. Cod
 
 - **`subject`:** short and plain, e.g. "Quick research question on {company}'s eng tooling". No clickbait.
 - **`body`:** under 120 words. Greet with `{first_name}`, then ask for consent in the first sentence ("Would you be open to a {survey_minutes}-minute research survey on X?"). Then `{personal_line}`, why their answer matters, that answers are used only for this research, then `{link}`. Sign off as the research team. Code appends the opt-out footer, so don't write one.
-- **`personal_line_rule`:** what the line should connect, e.g. "One sentence linking their role and company size to why their view on X matters." Professional facts only.
+- **`personal_line_rule`:** what the line should connect, e.g. "One sentence linking their role and company size to why their view on X matters." Professional facts only. Point it at the facts that differ between people (headline, time in the role, company size), not just title and company, so the lines don't all read the same.
 - **`fallback_line`:** a generic sentence that is true for everyone in the audience, e.g. "We're hearing from engineering leaders at Indian SaaS companies like {company}."
 
 ## Standard methods (use these exactly; don't invent new ones)
