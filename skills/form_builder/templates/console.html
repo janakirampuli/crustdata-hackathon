@@ -10,19 +10,24 @@
 
     <button class="search-btn" type="button" data-palette-open>{{ icon("search") }}<span>Search</span><kbd data-kbd>⌘K</kbd></button>
 
-    <nav class="nav" aria-label="Main">
-      <a href="/chat" {% if active == "chat" %}aria-current="page"{% endif %}>{{ icon("message") }} Research chat</a>
-      <a href="/surveys" {% if active == "surveys" %}aria-current="page"{% endif %}>{{ icon("clipboard") }} Surveys
-        <span class="count" data-rail-count>{{ rail_surveys|length }}</span></a>
-    </nav>
-
-    {% block rail_extra %}{% endblock %}
+    <section class="rail-section">
+      <div class="rail-head">
+        <a class="rail-title" href="/chat" {% if active == "chat" %}aria-current="page"{% endif %}>{{ icon("message", "i-sm") }} Chats</a>
+        <a class="rail-act" href="/chat?new=1" title="New chat" aria-label="New chat" data-new-chat>{{ icon("plus", "i-sm") }}</a>
+      </div>
+      <div class="studies" data-rail-chats><div class="rail-empty">Loading chats…</div></div>
+    </section>
 
     <section class="rail-section">
-      <div class="label">Studies</div>
+      <div class="rail-head">
+        <a class="rail-title" href="/surveys" {% if active == "surveys" and row is not defined %}aria-current="page"{% endif %}>{{ icon("clipboard", "i-sm") }} Surveys
+          <span class="count" data-rail-count>{{ rail_surveys|length }}</span></a>
+        <a class="rail-act" href="/surveys" title="All surveys">All</a>
+      </div>
       <div class="studies" data-rail-studies>
-        {% for s in rail_surveys[:8] %}
-        <a class="study" href="/surveys/{{ s.id }}" title="{{ s.title }} · {{ STATUS[s.status][0] if s.status in STATUS else s.status }}">
+        {% for s in rail_surveys[:12] %}
+        <a class="study" href="/surveys/{{ s.id }}" title="{{ s.title }} · {{ STATUS[s.status][0] if s.status in STATUS else s.status }}"
+           {% if row is defined and row.id == s.id %}aria-current="true"{% endif %}>
           <span class="dot {{ s.tone }}"></span><span class="t">{{ s.title }}</span><span class="n">{{ s.responses }}/{{ s.invites }}</span>
         </a>
         {% else %}

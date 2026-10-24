@@ -468,3 +468,18 @@ kbd, .search-btn kbd { font-family: var(--font-mono); font-size: 11px; padding: 
 .filterbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .filterbar .input { width: auto; flex: 1 1 220px; max-width: 340px; min-height: 32px; padding: 5px 10px; }
 .filterbar .seg-switch { flex-wrap: wrap; }
+
+/* ---- rail sections: chats + surveys on every page ---- */
+.rail-head { display: flex; align-items: center; gap: 6px; padding: 0 4px 0 0; }
+.rail-title { flex: 1; display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 10px; border-radius: var(--r);
+              font-weight: 600; font-size: var(--t-ui); color: var(--fg-2); text-decoration: none; }
+.rail-title:hover { background: var(--sunken); color: var(--fg); text-decoration: none; }
+.rail-title[aria-current="page"] { color: var(--fg); }
+.rail-title .count { margin-left: auto; font-family: var(--font-mono); font-size: 11px; font-weight: 400; color: var(--fg-3); }
+.rail-act { display: grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: var(--r-sm);
+            color: var(--fg-3); font-size: var(--t-cap); text-decoration: none; }
+.rail-act:hover { background: var(--sunken); color: var(--fg); text-decoration: none; }
+.study[aria-current="true"] { background: var(--surface); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
+.chat-link { grid-template-columns: 14px minmax(0, 1fr) auto; }
+.chat-link .i { width: 14px; height: 14px; color: var(--fg-3); }
+.rail-section[hidden] { display: none; }

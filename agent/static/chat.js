@@ -412,7 +412,7 @@ async function ask(text) {
   } finally {
     flushText(); setWorking(false);
     busy = false; send.disabled = false; input.focus();
-    window.refreshRail?.(); refreshCanvases(); loadChats();
+    window.refreshRail?.(); refreshCanvases(); window.refreshChats?.();
   }
 }
 
@@ -422,31 +422,20 @@ function showEmpty() {
   log.querySelectorAll("[data-prompt]").forEach(b => b.addEventListener("click", () => ask(b.dataset.prompt)));
 }
 
-// ---- saved chats (rail) ----
-const ago = iso => {
-  const m = Math.round((Date.now() - new Date(iso)) / 60000);
-  return m < 1 ? "now" : m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`;
-};
-async function loadChats() {
-  const box = $("#chats");
-  if (!box) return;
-  try {
-    const {threads} = await (await fetch("/api/threads")).json();
-    box.innerHTML = threads.length ? threads.map(t => `<a class="study chat-link" href="#" data-thread="${esc(t.id)}"
-        aria-current="${t.id === threadId}" title="${esc(t.title)}">${icon("message")}<span class="t">${esc(t.title)}</span>
-        <span class="n">${ago(t.updated_at)}</span></a>`).join("")
-      : `<div class="rail-empty">No saved chats yet.</div>`;
-  } catch { /* keep what's there */ }
-}
-$("#chats")?.addEventListener("click", e => {
-  const a = e.target.closest("[data-thread]");
-  if (!a) return;
+// ---- saved chats (rail list lives in app.js; on this page its links switch threads in place) ----
+window.currentThreadId = () => threadId;
+function resetTranscript() { Object.keys(runs).forEach(k => delete runs[k]); autoOpened.clear(); current = null; }
+document.addEventListener("click", e => {
+  const chat = e.target.closest("[data-rail-chats] [data-thread]"), fresh = e.target.closest("[data-new-chat]");
+  if (!chat && !fresh) return;
   e.preventDefault();
-  if (busy || a.dataset.thread === threadId) return;
-  threadId = a.dataset.thread; storage(s => s.setItem("threadId", threadId));
-  Object.keys(runs).forEach(k => delete runs[k]); autoOpened.clear(); current = null;
+  if (busy) return;
   $("#shell")?.classList.remove("rail-open");
-  restore().then(loadChats);
+  if (fresh) return newChat();
+  if (chat.dataset.thread === threadId) return;
+  threadId = chat.dataset.thread; storage(s => s.setItem("threadId", threadId));
+  resetTranscript();
+  restore().then(() => window.refreshChats?.());
 });
 
 async function restore() {
@@ -468,13 +457,14 @@ input.addEventListener("keydown", e => {
 });
 function grow() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 200) + "px"; }
 input.addEventListener("input", grow);
-$("#new").addEventListener("click", () => {
+function newChat() {
   if (busy) return;
   threadId = newId(); storage(s => s.setItem("threadId", threadId));
-  Object.keys(runs).forEach(k => delete runs[k]); autoOpened.clear(); current = null;
-  showEmpty(); showThread(); loadChats(); input.focus();
-});
+  resetTranscript();
+  showEmpty(); showThread(); window.refreshChats?.(); input.focus();
+}
+$("#new").addEventListener("click", newChat);
 
 restore();
-loadChats();
+window.refreshChats?.();
 input.focus();

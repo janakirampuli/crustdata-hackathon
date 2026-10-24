@@ -39,8 +39,9 @@
       if (!res.ok) return;
       const {surveys} = await res.json();
       const list = document.querySelector("[data-rail-studies]");
-      if (list) list.innerHTML = surveys.length ? surveys.slice(0, 8).map(s =>
-        `<a class="study" href="/surveys/${esc(s.id)}" title="${esc(s.title)}"><span class="dot ${esc(s.tone)}"></span>` +
+      const open = (location.pathname.match(/^\/surveys\/([^/?#]+)/) || [])[1];
+      if (list) list.innerHTML = surveys.length ? surveys.slice(0, 12).map(s =>
+        `<a class="study" href="/surveys/${esc(s.id)}" title="${esc(s.title)}"${s.id === open ? ' aria-current="true"' : ""}><span class="dot ${esc(s.tone)}"></span>` +
         `<span class="t">${esc(s.title)}</span><span class="n">${s.responses}/${s.invites}</span></a>`).join("")
         : `<div class="rail-empty">No surveys yet. The agent drafts one when you describe a study.</div>`;
       const count = document.querySelector("[data-rail-count]");
@@ -49,6 +50,30 @@
   }
   window.refreshRail = refreshRail;
   refreshRail();
+
+  // Saved chats, on every page. The chat page switches threads in place (chat.js); elsewhere the links navigate.
+  const ago = iso => {
+    const m = Math.round((Date.now() - new Date(iso)) / 60000);
+    return m < 1 ? "now" : m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`;
+  };
+  const icon = n => `<svg class="i" aria-hidden="true"><use href="/static/icons.svg#${n}"/></svg>`;
+  async function refreshChats() {
+    const box = document.querySelector("[data-rail-chats]");
+    if (!box) return;
+    try {
+      const res = await fetch("/api/threads");
+      if (!res.ok) { box.closest(".rail-section").hidden = true; return; }  // form server on its own: no chats
+      const {threads} = await res.json();
+      const current = location.pathname === "/chat" ? window.currentThreadId?.() : null;
+      box.innerHTML = threads.length ? threads.slice(0, 10).map(t =>
+        `<a class="study chat-link" href="/chat?thread=${encodeURIComponent(t.id)}" data-thread="${esc(t.id)}" title="${esc(t.title)}"` +
+        `${t.id === current ? ' aria-current="true"' : ""}>${icon("message")}<span class="t">${esc(t.title)}</span>` +
+        `<span class="n">${ago(t.updated_at)}</span></a>`).join("")
+        : `<div class="rail-empty">No chats yet. Start one with +.</div>`;
+    } catch { /* keep what's there */ }
+  }
+  window.refreshChats = refreshChats;
+  refreshChats();
 })();
 
 
