@@ -106,6 +106,22 @@ def rail():
     return {"surveys": rail_surveys(), "credits": crustdata_credits()}
 
 
+@app.get("/api/search-index")
+def search_index():
+    """Everything the ⌘K palette can jump to on the form side: surveys and the people invited to them."""
+    surveys = store.list_surveys()
+    people = []
+    for sv in surveys:
+        for p in store.list_participants(sv["id"]):
+            t = p["target"]
+            people.append({"name": t.get("name"), "title": t.get("title"), "company": t.get("company"),
+                           "state": p["state"], "survey_id": sv["id"], "survey": sv["spec"].title})
+    return {"surveys": [{"id": sv["id"], "title": sv["spec"].title, "status": sv["status"],
+                         "status_label": STATUS.get(sv["status"], (sv["status"], ""))[0],
+                         "question": sv["spec"].research_question} for sv in surveys],
+            "people": people, "tabs": TABS}
+
+
 @app.get("/surveys", response_class=HTMLResponse)
 def survey_list(request: Request):
     return _render(request, "list.html", surveys=store.list_surveys())

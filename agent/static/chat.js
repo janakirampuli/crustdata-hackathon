@@ -20,7 +20,9 @@ const VERIFIED = {pending: ["Pending", ""], ok: ["Verified", "ok"], flag: ["Flag
 
 function storage(fn) { try { return fn(window.localStorage); } catch { return null; } }
 function newId() { return (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()) + Math.random(); }
-let threadId = storage(s => s.getItem("threadId")) || newId();
+const params = new URLSearchParams(location.search);
+let threadId = params.get("thread") || (params.has("new") ? newId() : storage(s => s.getItem("threadId")) || newId());
+if (params.has("thread") || params.has("new")) history.replaceState(null, "", "/chat");
 storage(s => s.setItem("threadId", threadId));
 const showThread = () => $("#thread-label").textContent = "thread " + threadId.slice(0, 8);
 

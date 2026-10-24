@@ -8,6 +8,8 @@
       <span><span class="brand-name">Verified Research</span><br><span class="brand-sub">B2B surveys from real people</span></span>
     </a>
 
+    <button class="search-btn" type="button" data-palette-open>{{ icon("search") }}<span>Search</span><kbd data-kbd>⌘K</kbd></button>
+
     <nav class="nav" aria-label="Main">
       <a href="/chat" {% if active == "chat" %}aria-current="page"{% endif %}>{{ icon("message") }} Research chat</a>
       <a href="/surveys" {% if active == "surveys" %}aria-current="page"{% endif %}>{{ icon("clipboard") }} Surveys

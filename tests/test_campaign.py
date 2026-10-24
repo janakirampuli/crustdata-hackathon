@@ -227,3 +227,13 @@ def test_template_email_goes_through_resend_with_html_and_unsubscribe(resend, mo
     assert payload["subject"] == "Person, quick question"
     assert "You lead engineering at Co 1." in payload["text"] and "/opt-out" in payload["text"]
     assert '<a href="http://test/s/' in payload["html"] and "/opt-out>" in payload["headers"]["List-Unsubscribe"]
+
+
+def test_search_index_lists_surveys_tabs_and_people(client):
+    survey_id = approved_survey()
+    launch(survey_id, [target(1)])
+    index = client.get("/api/search-index").json()
+    assert index["surveys"][0] == {"id": survey_id, "title": "Agent data infra", "status": "fielding",
+                                   "status_label": "Fielding", "question": SURVEY["research_question"]}
+    assert index["people"][0]["name"] == "Person 1" and index["people"][0]["survey_id"] == survey_id
+    assert ["progress", "Progress"] in index["tabs"]
