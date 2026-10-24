@@ -1,4 +1,4 @@
-// Console chrome shared by every reviewer page: theme switch, mobile rail, live studies + credits, copy buttons.
+// Console chrome shared by every reviewer page: theme switch, mobile rail, live studies, copy buttons.
 (() => {
   const root = document.documentElement;
   const store = {
@@ -37,7 +37,7 @@
     try {
       const res = await fetch("/api/rail");
       if (!res.ok) return;
-      const {surveys, credits} = await res.json();
+      const {surveys} = await res.json();
       const list = document.querySelector("[data-rail-studies]");
       if (list) list.innerHTML = surveys.length ? surveys.slice(0, 8).map(s =>
         `<a class="study" href="/surveys/${esc(s.id)}" title="${esc(s.title)}"><span class="dot ${esc(s.tone)}"></span>` +
@@ -45,11 +45,6 @@
         : `<div class="rail-empty">No surveys yet. The agent drafts one when you describe a study.</div>`;
       const count = document.querySelector("[data-rail-count]");
       if (count) count.textContent = surveys.length;
-      const meter = document.querySelector("[data-rail-credits]");
-      if (meter && typeof credits === "number") {
-        meter.hidden = false;
-        meter.querySelector("b").textContent = credits.toLocaleString(undefined, {maximumFractionDigits: 2});
-      }
     } catch { /* rail stays server-rendered */ }
   }
   window.refreshRail = refreshRail;

@@ -6,7 +6,6 @@ Run with `uv run forms` (FORMS_HOST / FORMS_PORT override 127.0.0.1:8000).
 import json
 import os
 import re
-import time
 from pathlib import Path
 from urllib.parse import quote
 
@@ -38,23 +37,6 @@ VERIFIED = {"pending": ("Pending", ""), "ok": ("Verified", "ok"), "flag": ("Flag
 def rail_surveys() -> list[dict]:
     return [{"id": s["id"], "title": s["spec"].title, "status": s["status"], "tone": STATUS.get(s["status"], ("", ""))[1],
              "invites": s["invites"], "responses": s["responses"]} for s in store.list_surveys()]
-
-
-_credits = {"at": 0.0, "value": None}
-
-
-def crustdata_credits() -> float | None:
-    """Zero-credit balance lookup, cached for 30s. None when Crustdata isn't configured or reachable."""
-    if time.monotonic() - _credits["at"] > 30:
-        try:
-            from skills.crustdata.client import get_client
-
-            data = get_client().get_credits()
-            _credits["value"] = data.get("credits") if isinstance(data, dict) else None
-        except Exception:
-            _credits["value"] = None
-        _credits["at"] = time.monotonic()
-    return _credits["value"]
 
 
 OPS = {"(.)": "contains", "=": "is", "!=": "is not", "in": "is one of", "not_in": "is not one of", "=>": "≥",
@@ -108,7 +90,7 @@ def root():
 
 @app.get("/api/rail")
 def rail():
-    return {"surveys": rail_surveys(), "credits": crustdata_credits()}
+    return {"surveys": rail_surveys()}
 
 
 @app.get("/api/search-index")
