@@ -13,8 +13,6 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from .skills import Skill, load_skills
 
-DEFAULT_MODEL = "claude-opus-5-5"
-
 BASE_PROMPT = """You are a research operations agent. You replace a B2B survey and market-research firm: given a \
 research question and the kind of professional to hear from, you decide exactly who qualifies, find them, and \
 return work that a client can trust without a human in between.
@@ -41,7 +39,10 @@ def system_prompt(skills: list[Skill]) -> str:
 def build_agent(skill_names: list[str] | None = None, model: str | None = None, checkpointer=None):
     skills = load_skills(skill_names)
     tools = [t for s in skills for t in s.tools]
-    llm = ChatAnthropic(model=model or os.environ.get("AGENT_MODEL", DEFAULT_MODEL), max_tokens=16000)
+    model = model or os.environ.get("AGENT_MODEL")
+    if not model:
+        raise RuntimeError("AGENT_MODEL is not set; see .env.example")
+    llm = ChatAnthropic(model=model, max_tokens=16000)
     llm = llm.bind_tools(tools) if tools else llm
     # One cached system block: skills are static for the life of the agent.
     system = SystemMessage(content=[{

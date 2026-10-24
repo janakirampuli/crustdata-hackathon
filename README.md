@@ -5,7 +5,7 @@ See [CONTEXT.md](CONTEXT.md) for the idea, the user flow and the work split.
 ## Run
 
 ```bash
-cp .env.example .env        # fill ANTHROPIC_API_KEY and CRUSTDATA_API_KEY
+cp .env.example .env        # fill API keys; AGENT_MODEL picks the model
 uv sync
 uv run agent                # REPL
 uv run agent "Find 10 engineering leaders at Bengaluru startups with 20-200 people"
@@ -32,4 +32,4 @@ skills/
 
 Create `skills/<name>/SKILL.md` with `name` / `description` frontmatter. Optionally add `tools.py` with `TOOLS = [...]` (LangChain `@tool`s that return dicts). It's picked up automatically. Set `enabled: false` in the frontmatter to park it.
 
-Model: `claude-opus-5-5` by default (`AGENT_MODEL` overrides it). Don't pass `temperature`: Opus 5.5 rejects it.
+Model: set `AGENT_MODEL` in `.env` (required; the example uses `claude-sonnet-5-5`). Don't pass `temperature`: the 5.5 models reject it.
