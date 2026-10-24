@@ -51,16 +51,23 @@ def launch(survey_id: str, targets: list[dict], audience: Audience | None = None
     invites, spec = store.create_invites(survey_id, fresh), row["spec"]
     emails = (personalize.build_emails(spec, fresh, [f"{base_url()}/s/{inv['token']}" for inv in invites])
               if spec.email and fresh else [None] * len(fresh))
-    invited = []
+    invited, not_sent = [], []
     for t, inv, email in zip(fresh, invites, emails):
-        mailer.invite(survey_id, spec, inv["token"], t, email)
-        store.mark_contacted(inv["token"], t.get("business_email"), followup=False)
+        result = mailer.invite(survey_id, spec, inv["token"], t, email)
         personal = {"personalized": email["personalized"]} if email else {}
-        store.log_event(survey_id, "invited", inv["token"], {"email": t.get("business_email"), **personal})
-        invited.append({"crustdata_person_id": inv["crustdata_person_id"], "name": t.get("name"),
-                        "email": t.get("business_email"), "token": inv["token"], **personal})
-    return {"survey_id": survey_id, "invited": invited, "skipped": skipped, "email_mode": mailer.mode(),
-            "emails": _email_summary(emails), **status(survey_id)}
+        person = {"crustdata_person_id": inv["crustdata_person_id"], "name": t.get("name"),
+                  "email": t.get("business_email"), "token": inv["token"], "email_status": result["status"], **personal}
+        if mailer.delivered(result):
+            store.mark_contacted(inv["token"], t.get("business_email"), followup=False)
+            store.log_event(survey_id, "invited", inv["token"], {"email": t.get("business_email"),
+                                                                 "status": result["status"], **personal})
+            invited.append(person)
+        else:
+            store.log_event(survey_id, "send_failed", inv["token"], {"email": t.get("business_email"),
+                                                                     "status": result["status"], "error": result["error"]})
+            not_sent.append({**person, "error": result["error"]})
+    return {"survey_id": survey_id, "invited": invited, "not_sent": not_sent, "skipped": skipped,
+            "email_mode": mailer.mode(), "emails": _email_summary(emails), **status(survey_id)}
 
 
 def _email_summary(emails: list[dict | None]) -> dict | str:
@@ -84,10 +91,15 @@ def send_followups(survey_id: str, force: bool = False) -> list[dict]:
             continue
         if not force and datetime.fromisoformat(p["last_contacted_at"]) > due_before:
             continue
-        mailer.followup(survey_id, row["spec"], p["token"], {**p["target"], "business_email": p["email"]})
+        result = mailer.followup(survey_id, row["spec"], p["token"], {**p["target"], "business_email": p["email"]})
+        # Counted even when delivery fails, so the scheduler doesn't retry the same reminder every tick.
         store.mark_contacted(p["token"], p["email"], followup=True)
-        store.log_event(survey_id, "followup", p["token"], {"n": p["followups_sent"] + 1})
-        sent.append({"name": p["target"].get("name"), "email": p["email"]})
+        if mailer.delivered(result):
+            store.log_event(survey_id, "followup", p["token"], {"n": p["followups_sent"] + 1})
+            sent.append({"name": p["target"].get("name"), "email": p["email"]})
+        else:
+            store.log_event(survey_id, "send_failed", p["token"], {"email": p["email"], "status": result["status"],
+                                                                   "error": result["error"]})
     return sent
 
 

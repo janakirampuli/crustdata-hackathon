@@ -12,6 +12,7 @@
   {% if e.type == "launched" %}{{ icon("arrow-right") }}<span>Fieldwork started · max {{ e.detail.max_invites }} invites, target {{ e.detail.target_responses }} responses</span>
   {% elif e.type == "invited" %}{{ icon("mail") }}<span>Invited <b style="font-weight:500">{{ who }}</b> <span class="faint mono">{{ e.detail.email }}</span></span>
   {% elif e.type == "followup" %}{{ icon("mail") }}<span>Follow-up {{ e.detail.n }} sent to <b style="font-weight:500">{{ who }}</b></span>
+  {% elif e.type == "send_failed" %}{{ icon("alert") }}<span>Couldn't email <b style="font-weight:500">{{ who }}</b> <span class="faint">· {{ e.detail.error or e.detail.status }}</span></span>
   {% elif e.type == "opened" %}{{ icon("external") }}<span><b style="font-weight:500">{{ who }}</b> opened the survey</span>
   {% elif e.type == "responded" %}{{ icon("check-circle") }}<span><b style="font-weight:500">{{ who }}</b> responded</span>
   {% elif e.type == "opted_out" %}{{ icon("x-circle") }}<span><b style="font-weight:500">{{ who }}</b> opted out</span>
@@ -49,6 +50,7 @@
         <span class="tag">~{{ survey.estimated_minutes }} min</span>
         <span class="tag mono">{{ row.id }}</span>
         {% if row.close_reason %}<span class="tag">Closed · {{ row.close_reason }}</span>{% endif %}
+        <span class="tag">{{ icon("mail", "i-sm") }} {{ "Email via Resend" if email_mode == "resend" else "Email: outbox only" }}</span>
       </div>
       <h1>{{ survey.title }}</h1>
       <p class="muted">{{ survey.research_question }}</p>
@@ -166,6 +168,23 @@
 
 {# ======================= PARTICIPANTS ======================= #}
 {% elif tab == "participants" %}
+  {% if row.status in ("approved", "fielding") %}
+  <details class="panel panel-pad" {% if not participants %}open{% endif %}>
+    <summary style="cursor:pointer; font-weight:500">{{ icon("plus") }} Add a participant by hand</summary>
+    <form method="post" action="/surveys/{{ row.id }}/participants" class="stack" style="gap:12px; margin-top:12px">
+      <div class="settings">
+        <label for="p-name">Name<input class="input" id="p-name" name="name" required placeholder="Your name"></label>
+        <label for="p-email">Email<input class="input" id="p-email" name="email" type="email" required placeholder="you@company.com"></label>
+        <label for="p-title">Title<input class="input" id="p-title" name="title" placeholder="Optional"></label>
+        <label for="p-company">Company<input class="input" id="p-company" name="company" placeholder="Optional"></label>
+      </div>
+      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap">
+        <button class="btn btn-primary" type="submit">{{ icon("mail") }} Add and send invite</button>
+        <span class="cap">{{ "Sends a real email via Resend if the address is allowed." if email_mode == "resend" else "Outbox only: no email is sent." }} Counts toward max invites.</span>
+      </div>
+    </form>
+  </details>
+  {% endif %}
   {% if participants %}
   <div style="display:flex; gap:8px; flex-wrap:wrap">
     {% for state, label in [("invited", "Invited"), ("opened", "Opened"), ("responded", "Responded"), ("opted_out", "Opted out"), ("expired", "No response")] %}
@@ -424,11 +443,16 @@
       {% else %}<p class="cap">Nothing yet.</p>{% endif %}
     </section>
     <section class="panel panel-pad stack">
-      <div class="section-title"><h3>Outbox</h3><span class="pill warn">Log mode · not sent</span></div>
+      <div class="section-title"><h3>Outbox</h3>{% if email_mode == "resend" %}<span class="pill info">Sending via Resend</span>{% else %}<span class="pill warn">Log mode · not sent</span>{% endif %}</div>
       {% if outbox %}
         <div>{% for m in outbox %}
           <details class="mail">
-            <summary><span class="tag">{{ m.kind }}</span><span class="subj">{{ m.subject }}<span class="sub cap mono" style="display:block">{{ m.to_email }}</span></span>{{ when(m.created_at) }}</summary>
+            {% set tone = {"sent": "ok", "blocked": "warn", "failed": "bad"}.get(m.status, "") %}
+            <summary><span class="tag">{{ m.kind }}</span><span class="subj">{{ m.subject }}<span class="sub cap mono" style="display:block">{{ m.to_email }}</span></span>
+              <span style="display:flex; flex-direction:column; align-items:flex-end; gap:4px"><span class="pill {{ tone }}">{{ "Recorded" if m.status == "logged" else m.status|capitalize }}</span>{{ when(m.created_at) }}</span></summary>
+            {% if m.error and m.status == "logged" %}<p class="cap" style="margin:0 0 8px">{{ m.error|capitalize }}</p>
+            {% elif m.error %}<div class="notice warn" style="margin-bottom:8px">{{ icon("alert") }}<div>{{ m.error }}</div></div>{% endif %}
+            {% if m.provider_id %}<p class="cap mono" style="margin:0 0 8px">Resend id {{ m.provider_id }}</p>{% endif %}
             <pre class="log">{{ m.body }}</pre>
           </details>
         {% endfor %}</div>

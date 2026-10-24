@@ -113,7 +113,7 @@ def survey_list(request: Request):
 
 @app.get("/surveys/{survey_id}", response_class=HTMLResponse)
 def workspace(request: Request, survey_id: str, tab: str | None = None, split: str = "seniority", error: str = ""):
-    from skills.campaign import analytics, service
+    from skills.campaign import analytics, mailer, service
 
     row = store.get_survey(survey_id)
     if row is None:
@@ -122,7 +122,7 @@ def workspace(request: Request, survey_id: str, tab: str | None = None, split: s
     if tab not in tabs:
         tab = "survey" if row["status"] in ("draft", "changes_requested") else "progress"
     ctx = {"row": row, "survey": row["spec"], "config": row["config"], "audience": row["audience"], "tab": tab,
-           "progress": service.status(survey_id), "error": error, "base_url": base_url()}
+           "progress": service.status(survey_id), "error": error, "base_url": base_url(), "email_mode": mailer.mode()}
     if tab == "progress":
         ctx["events"] = store.list_events(survey_id, limit=8)
         ctx["timeline"] = _timeline(store.list_responses(survey_id), row)
@@ -176,6 +176,26 @@ async def save_config(request: Request, survey_id: str):
     store.set_config(survey_id, config)
     store.log_event(survey_id, "config", detail=config.model_dump())
     return RedirectResponse(f"/surveys/{survey_id}?tab=progress", status_code=303)
+
+
+@app.post("/surveys/{survey_id}/participants")
+def add_participant(request: Request, survey_id: str, name: str = Form(...), email: str = Form(...),
+                    title: str = Form(""), company: str = Form("")):
+    """Adds one person by hand (e.g. yourself for a demo) and sends their invite like any other target."""
+    from skills.campaign import service
+
+    email = email.strip()
+    if "@" not in email:
+        return RedirectResponse(f"/surveys/{survey_id}?tab=participants&error={quote('Enter a valid email address.')}",
+                                status_code=303)
+    target = {"crustdata_person_id": f"manual:{email.lower()}", "name": name.strip(), "business_email": email,
+              "title": title.strip() or None, "company": company.strip() or None,
+              "why_qualified": "you were added to this study by the research team"}
+    result = service.launch(survey_id, [target])
+    problem = result.get("error") or next(iter([p.get("error") or p.get("reason")
+                                                for p in result.get("not_sent", []) + result.get("skipped", [])]), None)
+    suffix = f"&error={quote(str(problem))}" if problem else ""
+    return RedirectResponse(f"/surveys/{survey_id}?tab=participants{suffix}", status_code=303)
 
 
 @app.post("/surveys/{survey_id}/nudge")

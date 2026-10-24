@@ -146,3 +146,84 @@ def test_config_form_and_every_tab_render(client):
         assert page.status_code == 200, tab
     assert "p1@co1.com" in client.get(f"/surveys/{survey_id}?tab=participants").text
     assert "120" in client.get(f"/surveys/{survey_id}?tab=audience").text
+
+
+class FakeResend:
+    def __init__(self, fail_for: str | None = None):
+        self.calls, self.fail_for = [], fail_for
+
+    def __call__(self, url, json, timeout, headers):
+        import httpx
+
+        self.calls.append({"json": json, "headers": headers})
+        request = httpx.Request("POST", url)
+        if self.fail_for and json["to"] == [self.fail_for]:
+            return httpx.Response(422, json={"message": "Invalid `to` field."}, request=request)
+        return httpx.Response(200, json={"id": f"re_{len(self.calls)}"}, request=request)
+
+
+@pytest.fixture
+def resend(monkeypatch):
+    from skills.campaign import mailer
+
+    monkeypatch.setenv("EMAIL_MODE", "resend")
+    monkeypatch.setenv("RESEND_API_KEY", "re_test")
+    monkeypatch.setenv("EMAIL_FROM", "Research <research@example.dev>")
+    monkeypatch.setattr(mailer, "MIN_GAP_S", 0)
+    fake = FakeResend(fail_for="p2@co2.com")
+    monkeypatch.setattr(mailer.httpx, "post", fake)
+    return fake
+
+
+def test_resend_sends_only_to_real_allowlisted_addresses(resend, monkeypatch):
+    monkeypatch.setenv("EMAIL_ALLOWLIST", "@co1.com, @co2.com")
+    survey_id = approved_survey()
+    result = launch(survey_id, [target(1), target(2), target(3),
+                                target(4, business_email="someone@x.invalid")])
+    # Mock and non-allowlisted people still count as invited: their email is recorded, never sent.
+    assert {p["name"]: p["email_status"] for p in result["invited"]} == {
+        "Person 1": "sent", "Person 3": "logged", "Person 4": "logged"}
+    assert result["not_sent"][0]["name"] == "Person 2" and result["not_sent"][0]["error"].startswith("Resend 422")
+
+    assert [c["json"]["to"] for c in resend.calls] == [["p1@co1.com"], ["p2@co2.com"]]
+    sent = resend.calls[0]
+    assert "/opt-out>" in sent["json"]["headers"]["List-Unsubscribe"]
+    assert sent["headers"]["Idempotency-Key"].endswith("-invite-0")
+    outbox = {m["to_email"]: m for m in store.list_outbox(survey_id)}
+    assert outbox["p1@co1.com"]["status"] == "sent" and outbox["p1@co1.com"]["provider_id"] == "re_1"
+    assert outbox["p3@co3.com"]["error"] == "recorded only: not on EMAIL_ALLOWLIST"
+    assert outbox["someone@x.invalid"]["error"] == "recorded only: mock address"
+    states = {p["crustdata_person_id"]: p["state"] for p in store.list_participants(survey_id)}
+    assert states == {"1": "invited", "2": "created", "3": "invited", "4": "invited"}
+
+
+def test_resend_without_credentials_fails_cleanly(resend, monkeypatch):
+    monkeypatch.delenv("RESEND_API_KEY")
+    survey_id = approved_survey()
+    result = launch(survey_id, [target(1)])
+    assert result["invited"] == [] and "RESEND_API_KEY" in result["not_sent"][0]["error"]
+
+
+def test_add_participant_by_hand(client):
+    survey_id = approved_survey()
+    client.post(f"/surveys/{survey_id}/participants", data={"name": "Me Myself", "email": "me@team.dev"})
+    [p] = store.list_participants(survey_id)
+    assert p["email"] == "me@team.dev" and p["state"] == "invited" and p["crustdata_person_id"] == "manual:me@team.dev"
+    page = client.post(f"/surveys/{survey_id}/participants", data={"name": "Me", "email": "me@team.dev"})
+    assert "already invited" in page.text
+
+
+def test_template_email_goes_through_resend_with_html_and_unsubscribe(resend, monkeypatch):
+    from skills.form_builder import personalize
+
+    monkeypatch.setattr(personalize, "write_lines", lambda *a, **k: {})  # every person gets the fallback line
+    template = {"subject": "{first_name}, quick question", "body": "Hi {first_name},\n\n{personal_line}\n\nSurvey: {link}",
+                "personal_line_rule": "One sentence about their role.", "fallback_line": "You lead engineering at {company}."}
+    survey_id = form_tools.create_survey.invoke({"survey": {**SURVEY, "email": template}})["survey_id"]
+    store.set_status(survey_id, "approved")
+    result = launch(survey_id, [target(1)])
+    assert result["invited"][0]["email_status"] == "sent"
+    payload = resend.calls[0]["json"]
+    assert payload["subject"] == "Person, quick question"
+    assert "You lead engineering at Co 1." in payload["text"] and "/opt-out" in payload["text"]
+    assert '<a href="http://test/s/' in payload["html"] and "/opt-out>" in payload["headers"]["List-Unsubscribe"]

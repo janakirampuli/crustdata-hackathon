@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS outbox (
     to_email TEXT,
     subject TEXT NOT NULL,
     body TEXT NOT NULL,
-    status TEXT NOT NULL DEFAULT 'logged',  -- logged (EMAIL_MODE=log) | sent | failed
+    status TEXT NOT NULL DEFAULT 'logged',  -- logged (EMAIL_MODE=log) | sent | blocked | failed
     created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS insights (
@@ -77,6 +77,7 @@ COLUMNS = {
     "surveys": {"config": "TEXT", "audience": "TEXT", "launched_at": "TEXT", "closes_at": "TEXT",
                 "closed_at": "TEXT", "close_reason": "TEXT",
                 "email_preview": "TEXT"},  # JSON {samples, emails}: the invite template filled for a few real people
+    "outbox": {"provider_id": "TEXT", "error": "TEXT"},
     "invites": {"email": "TEXT", "state": "TEXT NOT NULL DEFAULT 'created'", "invited_at": "TEXT",
                 "last_contacted_at": "TEXT", "followups_sent": "INTEGER NOT NULL DEFAULT 0", "opted_out_at": "TEXT"},
 }
@@ -295,6 +296,12 @@ def mark_contacted(token: str, email: str | None, followup: bool) -> None:
                          (email, now, now, token))
 
 
+def invite_contact_count(token: str) -> int:
+    """How many emails this invite has had so far; makes each send's idempotency key unique."""
+    with connect() as conn:
+        return conn.execute("SELECT COUNT(*) FROM outbox WHERE token = ?", (token,)).fetchone()[0]
+
+
 def opt_out(token: str) -> bool:
     with connect() as conn:
         cur = conn.execute("""UPDATE invites SET opted_out_at = ?, state = 'opted_out'
@@ -330,10 +337,11 @@ def list_events(survey_id: str, limit: int = 200) -> list[dict]:
 
 
 def add_outbox(survey_id: str, token: str | None, kind: str, to_email: str | None, subject: str, body: str,
-               status: str = "logged") -> None:
+               status: str = "logged", provider_id: str | None = None, error: str | None = None) -> None:
     with connect() as conn:
-        conn.execute("""INSERT INTO outbox (survey_id, token, kind, to_email, subject, body, status, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", (survey_id, token, kind, to_email, subject, body, status, _now()))
+        conn.execute("""INSERT INTO outbox (survey_id, token, kind, to_email, subject, body, status, provider_id, error,
+                        created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                     (survey_id, token, kind, to_email, subject, body, status, provider_id, error, _now()))
 
 
 def list_outbox(survey_id: str, limit: int = 100) -> list[dict]:

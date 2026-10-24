@@ -36,7 +36,7 @@ skills/
   campaign/     fieldwork for an approved survey (1 survey = 1 campaign)
     SKILL.md            lifecycle: configure → launch → monitor/nudge → close → report
     service.py          launch (respects max_invites), follow-ups, auto-close at target/deadline, 30s scheduler
-    mailer.py           invite + follow-up emails; EMAIL_MODE=log writes them to the outbox (no real sending yet)
+    mailer.py           invite + follow-up emails; EMAIL_MODE=log records them in the outbox, EMAIL_MODE=resend sends via Resend
     analytics.py        funnel, per-question stats, segment splits by seniority / function / company size
     insights.py         findings report from the stats (one model call; INSIGHTS_MODEL overrides AGENT_MODEL)
     tools.py            campaign_configure, campaign_launch, campaign_status, campaign_nudge, campaign_close, campaign_report
