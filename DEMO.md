@@ -81,7 +81,8 @@ Off camera, before this part: `uv run python scripts/seed_responses.py <survey_i
 
 ## 5. Close (about 20 s)
 
-- Compare costs: a $15k–50k agency study over 4–12 weeks, against Crustdata credits plus a few dollars of model calls, finished in a day or two.
+- Compare costs: a $15k–50k agency study over 4–12 weeks, against Crustdata credits plus a few dollars of model calls. The agent gets from brief to a launched campaign in minutes; after that the wait is for real people to reply.
+- Personalization at scale: every invite gets its own line from that person's Crustdata facts, where a panel sends one generic invite.
   - Read our real numbers off the Crustdata credits counter before recording. Don't quote a number we haven't measured.
 - Why Crustdata: verified identity is what makes the data trustworthy, and Crustdata is the identity layer. Every study is a new Crustdata search and enrichment.
 - Next steps: incentives and payouts, recurring tracker studies, a panel of verified respondents.

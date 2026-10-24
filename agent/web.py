@@ -126,6 +126,7 @@ def _turn_events(thread_id: str, message: str):
     config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 60}
     streamed = set()
     searches = {}  # (message id, block index) -> server tool call whose input JSON is still streaming
+    results = set()  # server tool results already sent
     try:
         for mode, chunk in get_agent().stream({"messages": [HumanMessage(message)]}, config,
                                               stream_mode=["messages", "updates"]):
@@ -151,13 +152,20 @@ def _turn_events(thread_id: str, message: str):
                         yield _sse({"type": "tool_call", "id": call["id"], "name": call["name"], "args": args})
                     elif event := _server_event(block):
                         streamed.add(token.id)
+                        if event["type"] == "tool_result":
+                            results.add(event["id"])
                         yield _sse(event)
                 continue
             for payload in chunk.values():
                 for msg in (payload or {}).get("messages", []):
                     if isinstance(msg, AIMessage):
-                        # A model call that didn't stream gets replayed whole.
-                        events = [_tool_call(c) for c in msg.tool_calls] if msg.id in streamed else _message_events(msg)
+                        # A model call that didn't stream gets replayed whole. One that did may still be missing
+                        # its web search results, which don't always arrive as stream chunks.
+                        if msg.id in streamed:
+                            events = [e for e in _message_events(msg) if e["type"] == "tool_result" and e["id"] not in results]
+                            events += [_tool_call(c) for c in msg.tool_calls]
+                        else:
+                            events = _message_events(msg)
                         for event in events:
                             yield _sse(event)
                     elif isinstance(msg, ToolMessage):

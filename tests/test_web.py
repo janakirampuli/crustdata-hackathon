@@ -1,5 +1,9 @@
 from fastapi.testclient import TestClient
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+import json
+
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
+
+from agent import web
 
 from agent.web import app, history_events
 from skills.form_builder import tools
@@ -45,6 +49,29 @@ def test_history_events_keeps_web_search_cards_between_text_blocks():
         {"type": "tool_result", "id": "s2", "name": "web_search", "content": {"error": "max_uses_exceeded"}},
         {"type": "text", "text": "Datadog leads."},
     ]
+
+
+def test_streamed_turn_still_completes_web_search_cards_the_stream_skipped(monkeypatch):
+    final = AIMessage(id="m1", content=[
+        {"type": "text", "text": "Checking."},
+        {"type": "server_tool_use", "id": "s1", "name": "web_search", "input": {"query": "pricing"}},
+        {"type": "web_search_tool_result", "tool_use_id": "s1", "content": [{"title": "A", "url": "https://a.io"}]},
+    ])
+
+    class Agent:
+        def stream(self, *args, **kwargs):
+            meta = {"langgraph_node": "agent"}
+            yield "messages", (AIMessageChunk(id="m1", content=[{"type": "text", "text": "Checking.", "index": 0}]), meta)
+            yield "messages", (AIMessageChunk(id="m1", content=[
+                {"type": "server_tool_use", "id": "s1", "name": "web_search", "input": {}, "index": 1}]), meta)
+            yield "messages", (AIMessageChunk(id="m1", content=[
+                {"type": "input_json_delta", "partial_json": '{"query": "pricing"}', "index": 1}]), meta)
+            yield "updates", {"agent": {"messages": [final]}}
+
+    monkeypatch.setattr(web, "get_agent", lambda: Agent())
+    events = [json.loads(e[len("data: "):]) for e in web._turn_events("t", "hi")]
+    assert [(e["type"], e.get("id")) for e in events] == [
+        ("text", None), ("tool_call", "s1"), ("tool_result", "s1"), ("done", None)]
 
 
 def test_survey_canvas_follows_the_approval_lifecycle(tmp_path, monkeypatch):

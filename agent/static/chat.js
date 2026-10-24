@@ -129,12 +129,13 @@ const autoOpened = new Set();
 function argsSummary(name, args) {
   const src = name === "crustdata_search_people" ? (args.plan || {}) : args;
   const entries = Object.entries(src).filter(([k, v]) => {
-    if (v == null || v === "" || ["survey", "targets", "fields", "raw"].includes(k)) return false;
+    if (v == null || v === "" || ["survey", "targets", "fields", "raw", "cursor"].includes(k)) return false;
     return Array.isArray(v) ? v.length > 0 : true;
   });
   let caption = entries.map(([, v]) => chipValue(v)).join(" · ");
   if (args.survey?.title) caption = args.survey.title;
   if (args.targets) caption = plural(args.targets.length, "target", "targets");
+  if (args.cursor) caption = caption ? caption + " · next page" : "next page";
   const tags = entries.length
     ? `<div class="tags">${entries.map(([k, v]) => `<span class="tag">${esc(words(k))} <b>${esc(chipValue(v))}</b></span>`).join("")}</div>` : "";
   return {caption, tags};

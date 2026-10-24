@@ -65,8 +65,8 @@
   .run > summary:hover { background: var(--sunken); }
   .run-icon { color: var(--fg-3); display: grid; }
   .run-title { min-width: 0; display: flex; align-items: baseline; gap: 10px; }
-  .run-title b { font-weight: 500; white-space: nowrap; }
-  .run-cap { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-3); font-size: var(--t-cap); }
+  .run-title b { flex: none; font-weight: 500; white-space: nowrap; }
+  .run-cap { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg-3); font-size: var(--t-cap); }
   .run-meta { font-size: var(--t-cap); color: var(--fg-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .run-state { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); }
   .run-state .i { width: 15px; height: 15px; }
