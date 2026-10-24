@@ -157,3 +157,12 @@ def test_low_confidence_jev_scores_count_as_neutral():
     unsure = ScoreAnswer(type="score", score=0.0, confidence=0.3, legend={}, probabilities={})
     sure = ScoreAnswer(type="score", score=0.2, confidence=0.8, legend={}, probabilities={})
     assert quality._level(unsure, 3) == 1 and quality._level(sure, 3) == 0 and quality._level(None, 3) == 1
+
+
+def test_jev_checks_profile_fit_even_without_open_text(campaign, monkeypatch):
+    monkeypatch.setenv("TYPESAFE_API_KEY", "ts_test")
+    monkeypatch.setattr(quality, "_jev_client", lambda: FakeJev())
+    survey_id, t = campaign
+    submit(t[0], {"role": "Decide", "pain": 4, "trust": 2})
+    review = quality.review_text(survey_id, t[0])
+    assert FakeJev.seen[-1][1] == {"profile_fit"} and review["answers"] == [] and review["profile_fit"] == 0.1

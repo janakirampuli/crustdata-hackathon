@@ -243,20 +243,20 @@ def _review_with_jev(survey: Survey, response: dict, texts: list[dict]) -> dict:
 
 
 def review_text(survey_id: str, token: str) -> dict | None:
-    """One judgment call per response with open text (Jev if configured, else Claude). Stores it and rescores."""
+    """One judgment call per response: Jev (open text + profile fit) if configured, else Claude on open text only."""
     row = store.get_survey(survey_id)
     response = next((r for r in store.list_responses(survey_id) if r["token"] == token), None)
     if row is None or response is None:
         return None
     texts = [{"id": q.id, "question": q.prompt, "answer": response["answers"][q.id]}
              for q in row["spec"].questions if q.type == "text" and response["answers"].get(q.id)]
-    if not texts:
-        return None
-    if jev_enabled():
+    if jev_enabled():  # Jev also checks profile fit, so every response gets a review
         review = _review_with_jev(row["spec"], response, texts)
         store.set_quality_llm(token, review)
         rescore(survey_id)
         return review
+    if not texts:
+        return None
     t = response["target"]
     who = " · ".join(x for x in (t.get("title"), t.get("seniority"), t.get("company")) if x) or "unknown"
     model = os.environ.get("QUALITY_MODEL", "claude-haiku-5-5")
@@ -270,6 +270,10 @@ def review_text(survey_id: str, token: str) -> dict | None:
     store.set_quality_llm(token, review)
     rescore(survey_id)
     return review
+
+
+def needs_review(survey: Survey, answers: dict) -> bool:
+    return jev_enabled() or any(q.type == "text" and answers.get(q.id) for q in survey.questions)
 
 
 def review_in_background(survey_id: str, token: str) -> None:

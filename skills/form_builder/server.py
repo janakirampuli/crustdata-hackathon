@@ -336,8 +336,7 @@ async def respond_submit(request: Request, token: str):
 
     store.log_event(invite["survey_id"], "responded", token)
     quality.rescore(invite["survey_id"])
-    if os.environ.get("QUALITY_REVIEW", "on") != "off" and any(
-            q.type == "text" and answers.get(q.id) for q in row["spec"].questions):
+    if os.environ.get("QUALITY_REVIEW", "on") != "off" and quality.needs_review(row["spec"], answers):
         quality.review_in_background(invite["survey_id"], token)
     service.after_response(invite["survey_id"])
     return _render(request, "message.html", title="Thank you",
