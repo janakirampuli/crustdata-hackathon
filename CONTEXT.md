@@ -75,7 +75,7 @@ Us: decide who qualifies (Crustdata) → contact **only** those people → each 
 - **Python + LangGraph** agent, fresh. Only the backbone, no memory/plumbing.
 - **Skills** = a folder with a `SKILL.md` (knowledge) plus tools:
   - `skills/crustdata/` — Crustdata search/enrich tools + query-authoring knowledge, ported from Kris@Work (approved).
-  - `skills/form-builder/` — **on hold**; the form tool isn't decided yet.
+  - `skills/form_builder/` — our own FastAPI + SQLite form server. The agent drafts the survey, a human approves it, then the agent mints one single-use link per target, bound to a `crustdata_person_id`.
 - Crustdata's own MCP server: explore later.
 
 ## Crustdata API notes
@@ -101,7 +101,14 @@ Us: decide who qualifies (Crustdata) → contact **only** those people → each 
 ## Status
 
 - Agent backbone + Crustdata skill: done and tested live. See [README.md](README.md) to run it.
+- Form builder: done (teammate). Survey drafting with a human approval gate, one identity-bound link per target, and response collection. Run it with `uv run forms`; set `FORMS_BASE_URL` to a public tunnel URL for real invites.
 - Business emails: `crustdata_enrich_contact` is wired to the real endpoint, but **mocked until Crustdata enables it** (returns 403 today). Mock emails are plus-addresses of `MOCK_EMAIL_INBOX` (or `@mock.invalid`), marked `mocked: true`, so outreach can't reach strangers. **Teammate:** in mock mode the email domain won't match the employer, so the domain-vs-employer verification check has to skip or flag mocked targets.
+
+**Still to build**
+- Outreach: sending invite emails, follow-ups, a send cap, and the consent line.
+- Verification check: nothing sets a response's `verified` field yet, so every response stays `pending`.
+- Simulated lane: forecast answers from each target's profile.
+- Analysis/report page, and the end-to-end demo run (brief → targets → emails → links → responses → report).
 
 ## Work split (proposal — adjust)
 
@@ -115,7 +122,7 @@ Interface between the halves: a **target record** `{crustdata_person_id, name, t
 
 ## Open questions
 
-1. Which form tool? (Our own tiny FastAPI form, Tally or Typeform with hidden fields, or Google Forms.) The unique token per invite must survive it.
+1. ~~Which form tool?~~ Settled: our own FastAPI form server (`skills/form_builder`).
 2. Email sending: Gmail API vs Resend/SES. We need reply tracking for follow-ups.
 3. Will the organizers let us survey the room and share the attendee list?
 4. ~~Contact enrich access~~: Crustdata confirmed they'll enable `POST /person/contact/enrich` (our only source of business emails) on our key later, around demos. Until then it's **mocked** (`CRUSTDATA_MOCK_CONTACT_ENRICH=true`). Still to confirm: the `end_date` filter behaves as documented.
