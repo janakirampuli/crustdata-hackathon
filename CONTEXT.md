@@ -93,7 +93,7 @@ Us: decide who qualifies (Crustdata) → contact **only** those people → each 
   - ~0.03 credits per result; premium field groups cost more.
   - Always pass `fields` as whole sections (`basic_profile`, `experience`, `social_handles`, `contact`). The leaf paths `basic_profile.first_name` / `last_name` → HTTP 400.
 - `POST /person/enrich` by LinkedIn URL or business email. **Pass `fields`**, or you get only name + id.
-- Search returns **no emails**, only a `has_business_email` flag and the LinkedIn URL. `/person/enrich` doesn't return emails either. Emails come only from **Contact Enrich**: `POST /person/contact/enrich` with up to 25 LinkedIn URLs, `fields: ["contact.business_emails"]`, `verified: true`. It costs 1 credit per matched person (+0.5 if verified), and unmatched lookups are free. Statuses: deliverable, catch_all, invalid, unknown.
+- Search returns **no emails**, only a `has_business_email` flag and the LinkedIn URL. Emails come from `POST /person/enrich` with `fields: ["contact.business_emails"]` (tested live: 2 credits per matched person, returns `crustdata_person_id` + every business email with its status). **Contact Enrich** (`POST /person/contact/enrich`, 1 credit, +0.5 with `verified: true`) is still disabled on our key. A person can have several "deliverable" business emails on different domains (old employer, personal domain), so pick the one matching the current employer's domain. Statuses: deliverable, catch_all, invalid, unknown.
 - People often hold several *current* roles, and filters match any of them. The tool's summary view shows the role that matched.
 - `POST /company/identify` is free; `POST /company/search` and `POST /job/search` are also available.
 - `GET /user/credits` returns the balance (zero-credit call).
@@ -102,7 +102,7 @@ Us: decide who qualifies (Crustdata) → contact **only** those people → each 
 
 - Agent backbone + Crustdata skill: done and tested live. See [README.md](README.md) to run it.
 - Form builder: done (teammate). Survey drafting with a human approval gate, one identity-bound link per target, and response collection. Run it with `uv run forms`; set `FORMS_BASE_URL` to a public tunnel URL for real invites.
-- Business emails: `crustdata_enrich_contact` is wired to the real endpoint, but **mocked until Crustdata enables it** (returns 403 today). Mock emails are plus-addresses of `MOCK_EMAIL_INBOX` (or `@mock.invalid`), marked `mocked: true`, so outreach can't reach strangers. **Teammate:** in mock mode the email domain won't match the employer, so the domain-vs-employer verification check has to skip or flag mocked targets.
+- Business emails: `crustdata_enrich_contact` returns real emails via `/person/enrich` when `CRUSTDATA_MOCK_CONTACT_ENRICH=false`; set it to `true` to mock. Mock emails are plus-addresses of `MOCK_EMAIL_INBOX` (or `@mock.invalid`), marked `mocked: true`, so outreach can't reach strangers. **Teammate:** in mock mode the email domain won't match the employer, so the domain-vs-employer verification check has to skip or flag mocked targets.
 
 **Still to build**
 - Outreach: sending invite emails, follow-ups, a send cap, and the consent line.

@@ -50,7 +50,9 @@ class CrustdataClient:
     def enrich_contact(self, body: dict) -> Any:
         if os.environ.get("CRUSTDATA_MOCK_CONTACT_ENRICH", "").lower() in {"1", "true", "yes"}:
             return mock_contact_enrich(body)
-        return self._request("POST", "person/contact/enrich", body)
+        # /person/contact/enrich is still disabled on our key (403), but /person/enrich serves the same
+        # contact.business_emails in the same response shape. It has no verified mode.
+        return self.enrich_person({k: v for k, v in body.items() if k != "verified"})
 
     def identify_company(self, body: dict) -> Any:
         return self._request("POST", "company/identify", body)

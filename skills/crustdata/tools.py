@@ -151,15 +151,16 @@ def enrich_person(professionalNetworkProfileUrls: list[str] | None = None, busin
 class EnrichContactInput(BaseModel):
     professionalNetworkProfileUrls: list[str] = Field(
         min_length=1, max_length=25, description="LinkedIn profile URLs of people already selected as targets.")
-    verified: bool = Field(True, description="Only return business emails that pass a deliverability check now "
-                           "(deliverable or catch_all). +0.5 credit per person with a verified email.")
+    verified: bool = Field(True, description="Only applies to /person/contact/enrich, which isn't enabled yet; "
+                           "ignored today. Every email still comes back with a status.")
 
 
 @tool("crustdata_enrich_contact", args_schema=EnrichContactInput)
 def enrich_contact(professionalNetworkProfileUrls: list[str], verified: bool = True) -> Any:
-    """Get business email addresses for selected people via /person/contact/enrich. 1 credit per matched
-    person (no match is free). Call ONLY for final targets, never for a whole search page. Statuses:
-    deliverable (safe), catch_all (domain accepts anything, unconfirmed), invalid, unknown."""
+    """Get business email addresses for selected people (via /person/enrich). 2 credits per matched person
+    (no match is free). Call ONLY for final targets, never for a whole search page. A person can have several
+    business emails, some on old or personal domains: use the one whose domain matches the current employer's
+    website. Statuses: deliverable (safe), catch_all (domain accepts anything, unconfirmed), invalid, unknown."""
     body = {
         "professional_network_profile_urls": professionalNetworkProfileUrls,
         "fields": ["contact.business_emails"],

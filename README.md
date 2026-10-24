@@ -24,7 +24,7 @@ skills/
   crustdata/    Crustdata knowledge + tools (ported from Kris@Work)
     SKILL.md            query-authoring rules, vocabularies, examples, person filter catalog
     contact_plan.py     typed people plan → Crustdata filter DSL (+ catalog validation, country fixes)
-    tools.py            search_people, enrich_person, enrich_contact (mocked for now), identify_company,
+    tools.py            search_people, enrich_person, enrich_contact (mock via CRUSTDATA_MOCK_CONTACT_ENRICH), identify_company,
                         search_companies, search_jobs, get_credits
     reference/person_filter_catalog.json
   form_builder/ survey drafting, human approval, one identity-bound link per target
