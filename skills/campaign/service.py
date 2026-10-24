@@ -27,6 +27,8 @@ def launch(survey_id: str, targets: list[dict], audience: Audience | None = None
         return {"error": "not_approved" if row["status"] != "closed" else "closed", "status": row["status"]}
     config = row["config"]
     if audience is not None:
+        if not audience.brief and row["brief"]:
+            audience = audience.model_copy(update={"brief": row["brief"]})
         store.set_audience(survey_id, audience)
 
     existing = {p["crustdata_person_id"] for p in store.list_participants(survey_id)}

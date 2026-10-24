@@ -15,6 +15,7 @@
   {% elif e.type == "send_failed" %}{{ icon("alert") }}<span>Couldn't email <b style="font-weight:500">{{ who }}</b> <span class="faint">· {{ e.detail.error or e.detail.status }}</span></span>
   {% elif e.type == "opened" %}{{ icon("external") }}<span><b style="font-weight:500">{{ who }}</b> opened the survey</span>
   {% elif e.type == "responded" %}{{ icon("check-circle") }}<span><b style="font-weight:500">{{ who }}</b> responded</span>
+  {% elif e.type == "verification" %}{{ icon("alert") }}<span>Answer from <b style="font-weight:500">{{ who }}</b> {{ "failed verification" if e.detail.verified == "fail" else "flagged" }} <span class="faint">· {{ e.detail.reason }}</span></span>
   {% elif e.type == "opted_out" %}{{ icon("x-circle") }}<span><b style="font-weight:500">{{ who }}</b> opted out</span>
   {% elif e.type == "closed" %}{{ icon("lock") }}<span>Survey closed · {{ e.detail.reason }}</span>
   {% elif e.type == "config" %}{{ icon("clipboard") }}<span>Settings saved · max {{ e.detail.max_invites }} invites, target {{ e.detail.target_responses }}, deadline {{ e.detail.deadline_minutes }} min</span>
@@ -329,7 +330,9 @@
 {% elif tab == "analytics" %}
   {% set f = stats.funnel %}
   <div class="kpis">
-    <div class="panel kpi"><span class="cap">Responses analysed</span><span class="v">{{ f.counted }}</span></div>
+    {% set v = stats.verification %}
+    <div class="panel kpi"><span class="cap">Responses analysed</span><span class="v">{{ f.counted }}</span>
+      <span class="cap">{{ v.verified }} verified{% if v.flagged %} · {{ v.flagged }} flagged{% endif %}{% if v.pending %} · {{ v.pending }} pending{% endif %}{% if v.excluded %} · {{ v.excluded }} excluded{% endif %}</span></div>
     <div class="panel kpi"><span class="cap">Response rate</span><span class="v">{{ stats.response_rate_pct|round|int }}<small>%</small></span><span class="cap">{{ f.responded }} of {{ f.invited }} invited</span></div>
     <div class="panel kpi"><span class="cap">Opened</span><span class="v">{{ f.opened }}</span></div>
     <div class="panel kpi"><span class="cap">Opted out</span><span class="v">{{ f.opted_out }}</span></div>
@@ -411,16 +414,16 @@
       </div>
       {% set seg = stats.segments[split] %}
       <div class="kv-chips" id="segments">{% for value, n in seg.mix.items() %}<span class="tag">{{ value }} <b>{{ n }}</b></span>{% endfor %}</div>
-      {% for q in survey.questions if q.type == "single_choice" and seg.splits.get(q.id) %}
+      {% for q in survey.questions if q.type in ("single_choice", "multi_choice") and seg.splits.get(q.id) %}
         {% set table = seg.splits[q.id] %}
         <div class="stack" style="gap:8px">
           <span class="cap">{{ q.prompt }}</span>
           <div class="tbl-wrap"><table class="tbl">
             <thead><tr><th>Answer</th>{% for value in seg.mix %}<th>{{ value }} <span class="faint">n={{ seg.mix[value] }}</span></th>{% endfor %}</tr></thead>
             <tbody>
-              {% for opt in q.options + (["Other"] if q.allow_other else []) %}{% set oi = loop.index0 %}
+              {% for opt in q.options + (["Other"] if q.allow_other else []) %}
               <tr><td>{{ opt }}</td>
-                {% for value in seg.mix %}{% set cell = table[value][oi] %}
+                {% for value in seg.mix %}{% set cell = table[value]|selectattr("label", "equalto", opt)|first %}
                 <td class="num" title="{{ value }} · {{ opt }}: {{ cell.count }} of {{ seg.mix[value] }}"><span class="mini"><i style="width:{{ cell.pct }}%"></i></span>{{ cell.pct|round|int }}%</td>
                 {% endfor %}
               </tr>

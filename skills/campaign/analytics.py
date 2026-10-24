@@ -79,7 +79,8 @@ def _pct(part: int, whole: int) -> float:
 def compute(survey_id: str) -> dict:
     row = store.get_survey(survey_id)
     survey: Survey = row["spec"]
-    responses = [r for r in store.list_responses(survey_id) if r["verified"] != "fail"]
+    every = store.list_responses(survey_id)
+    responses = [r for r in every if r["verified"] != "fail"]
     st = store.invite_stats(survey_id)
     participants = store.list_participants(survey_id)
     questions = [summarize_question(q, [r["answers"].get(q.id) for r in responses]) for q in survey.questions]
@@ -93,7 +94,7 @@ def compute(survey_id: str) -> dict:
         mix = Counter(segment_value(r["target"], seg) for r in responses)
         splits = {}
         for q in survey.questions:
-            if q.type != "single_choice":
+            if q.type not in ("single_choice", "multi_choice"):
                 continue
             table = {}
             for value in mix:
@@ -107,10 +108,19 @@ def compute(survey_id: str) -> dict:
         "title": survey.title,
         "funnel": {"selected": len(participants), "invited": st["invited"], "opened": st["opened"],
                    "responded": st["responded"], "opted_out": st["opted_out"], "counted": len(responses)},
+        "verification": _verification(every),
         "response_rate_pct": _pct(st["responded"], st["invited"]),
         "questions": questions,
         "segments": segments,
     }
+
+
+def _verification(responses: list[dict]) -> dict:
+    """How many answers passed the identity checks. Failed ones are excluded from every number above."""
+    counts = Counter(r["verified"] for r in responses)
+    notes = lambda state: [{"who": _who(r["target"]), "reason": r["reason"]} for r in responses if r["verified"] == state]
+    return {"verified": counts["ok"], "flagged": counts["flag"], "pending": counts["pending"],
+            "excluded": counts["fail"], "flagged_reasons": notes("flag"), "excluded_reasons": notes("fail")}
 
 
 def _who(target: dict) -> str:

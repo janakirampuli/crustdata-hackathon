@@ -57,7 +57,7 @@ def write_lines(survey: Survey, targets: list[dict]) -> dict[str, dict]:
         return {}
     from langchain_anthropic import ChatAnthropic
 
-    llm = ChatAnthropic(model=os.environ.get("EMAIL_MODEL") or "claude-haiku-5-5", max_tokens=4000)
+    llm = ChatAnthropic(model=os.environ.get("EMAIL_MODEL") or "claude-haiku-5-5", max_tokens=8000)  # thinking shares this budget
     writer = llm.with_structured_output(PersonalLines)
     people = [{"crustdata_person_id": str(t["crustdata_person_id"]), "name": t.get("name"), **facts_of(t)}
               for t in targets]

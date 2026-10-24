@@ -237,3 +237,10 @@ def test_search_index_lists_surveys_tabs_and_people(client):
                                    "status_label": "Fielding", "question": SURVEY["research_question"]}
     assert index["people"][0]["name"] == "Person 1" and index["people"][0]["survey_id"] == survey_id
     assert ["progress", "Progress"] in index["tabs"]
+
+
+def test_brief_saved_with_the_draft_reaches_the_audience_at_launch():
+    survey_id = form_tools.create_survey.invoke({"survey": SURVEY, "brief": "**H1:** teams scrape."})["survey_id"]
+    store.set_status(survey_id, "approved")
+    launch(survey_id, [target(1)])
+    assert store.get_survey(survey_id)["audience"].brief == "**H1:** teams scrape."

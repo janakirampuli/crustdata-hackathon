@@ -73,19 +73,24 @@ def _email_summary(preview: dict | None) -> dict:
                               for s, e in zip(preview["samples"], preview["emails"])]}
 
 
+BRIEF_HELP = ("The research brief the user confirmed, as markdown: objective, decision, key questions, hypotheses, "
+              "persona, sample size. The findings report checks the hypotheses against it.")
+
+
 class CreateSurveyInput(BaseModel):
     survey: Survey
     sample_targets: list[Target] = Field(default_factory=list, max_length=3, description=SAMPLES_HELP)
+    brief: str | None = Field(None, description=BRIEF_HELP + " Omit only when the user skipped the brief.")
 
 
 @tool("form_create_survey", args_schema=CreateSurveyInput)
-def create_survey(survey: Survey, sample_targets: list[Target] | None = None) -> dict:
+def create_survey(survey: Survey, sample_targets: list[Target] | None = None, brief: str | None = None) -> dict:
     """Save a survey draft, with its invite email template, and get its review URL. The draft is NOT live: a
     human must approve it (survey and email template together) before any invite link works."""
     survey = _survey(survey)
     if survey.email is None:
         return NO_TEMPLATE
-    survey_id = store.create_survey(survey)
+    survey_id = store.create_survey(survey, brief)
     preview = _email_preview(survey_id, survey, _targets(sample_targets or []))
     return {"survey_id": survey_id, "status": "draft", "review_url": _review_url(survey_id),
             "questions": len(survey.questions), **_email_summary(preview)}
@@ -96,17 +101,19 @@ class ReviseSurveyInput(BaseModel):
     survey: Survey = Field(description="The full revised survey. It replaces the previous version.")
     sample_targets: list[Target] | None = Field(None, max_length=3,
                                                 description=SAMPLES_HELP + " Omit to reuse the earlier ones.")
+    brief: str | None = Field(None, description=BRIEF_HELP + " Omit to keep the earlier one.")
 
 
 @tool("form_revise_survey", args_schema=ReviseSurveyInput)
-def revise_survey(survey_id: str, survey: Survey, sample_targets: list[Target] | None = None) -> dict:
+def revise_survey(survey_id: str, survey: Survey, sample_targets: list[Target] | None = None,
+                  brief: str | None = None) -> dict:
     """Replace a survey (questions and email template) with a revised version, e.g. after the reviewer
     requested changes. The survey goes back to draft and needs approval again. Refused once invite links exist."""
     survey = _survey(survey)
     if survey.email is None:
         return NO_TEMPLATE
     try:
-        store.revise_survey(survey_id, survey)
+        store.revise_survey(survey_id, survey, brief)
     except KeyError:
         return {"error": "not_found", "survey_id": survey_id}
     except ValueError as e:

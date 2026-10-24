@@ -39,3 +39,4 @@ Every new study starts here. Do not draft a survey, mint links or look up emails
 - Market facts come from search results or the user. Label anything else as an assumption.
 - Search spends real time on stage (a few seconds each). Don't search for definitions you already know.
 - Keep the brief scannable: bullets, no long prose.
+- Once confirmed, pass the brief, with any changes the user asked for, as `brief` to `form_create_survey`. It stays with the survey, and the findings report checks its hypotheses.

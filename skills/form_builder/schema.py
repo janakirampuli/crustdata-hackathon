@@ -146,5 +146,5 @@ class Audience(BaseModel):
     plan: dict = Field(default_factory=dict, description="The ContactSearchPlan passed to crustdata_search_people.")
     effective_filters: dict | list | None = Field(None, description="effective_filters returned by that search.")
     total_count: int | None = Field(None, description="total_count returned by that search.")
-    brief: str | None = Field(None, description="The confirmed research brief (markdown): objective, decision, "
-                              "key questions, hypotheses. Used to write the insights.")
+    brief: str | None = Field(None, description="Leave empty to use the brief saved with the survey. Set it only "
+                              "if the brief changed after the survey was drafted.")

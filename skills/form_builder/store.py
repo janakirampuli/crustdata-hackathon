@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS insights (
 # Columns added after the first release; added in place so existing databases keep their data.
 COLUMNS = {
     "surveys": {"config": "TEXT", "audience": "TEXT", "launched_at": "TEXT", "closes_at": "TEXT",
-                "closed_at": "TEXT", "close_reason": "TEXT",
+                "closed_at": "TEXT", "close_reason": "TEXT", "brief": "TEXT",
                 "email_preview": "TEXT"},  # JSON {samples, emails}: the invite template filled for a few real people
     "outbox": {"provider_id": "TEXT", "error": "TEXT"},
     "invites": {"email": "TEXT", "state": "TEXT NOT NULL DEFAULT 'created'", "invited_at": "TEXT",
@@ -122,12 +122,12 @@ def _survey_row(row: sqlite3.Row | None) -> dict | None:
             "email_preview": json.loads(d["email_preview"]) if d.get("email_preview") else None}
 
 
-def create_survey(survey: Survey) -> str:
+def create_survey(survey: Survey, brief: str | None = None) -> str:
     survey_id = uuid.uuid4().hex[:10]
     now = _now()
     with connect() as conn:
-        conn.execute("INSERT INTO surveys (id, spec, created_at, updated_at) VALUES (?, ?, ?, ?)",
-                     (survey_id, survey.model_dump_json(), now, now))
+        conn.execute("INSERT INTO surveys (id, spec, brief, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                     (survey_id, survey.model_dump_json(), brief, now, now))
     return survey_id
 
 
@@ -145,14 +145,14 @@ def list_surveys() -> list[dict]:
     return [{**_survey_row(r), "invites": r["invites"], "responses": r["responses"]} for r in rows]
 
 
-def revise_survey(survey_id: str, survey: Survey) -> None:
-    """Replaces the spec and sends it back to draft. Refused once invites exist."""
+def revise_survey(survey_id: str, survey: Survey, brief: str | None = None) -> None:
+    """Replaces the spec (and the brief, when given) and sends it back to draft. Refused once invites exist."""
     with connect() as conn:
         if conn.execute("SELECT 1 FROM invites WHERE survey_id = ? LIMIT 1", (survey_id,)).fetchone():
             raise ValueError("survey already has invites; create a new survey instead")
-        cur = conn.execute("""UPDATE surveys SET spec = ?, status = 'draft', version = version + 1,
-                              approved_at = NULL, updated_at = ? WHERE id = ?""",
-                           (survey.model_dump_json(), _now(), survey_id))
+        cur = conn.execute("""UPDATE surveys SET spec = ?, brief = COALESCE(?, brief), status = 'draft',
+                              version = version + 1, approved_at = NULL, updated_at = ? WHERE id = ?""",
+                           (survey.model_dump_json(), brief, _now(), survey_id))
         if cur.rowcount == 0:
             raise KeyError(survey_id)
 

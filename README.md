@@ -43,11 +43,13 @@ skills/
   form_builder/ survey drafting, human approval, one identity-bound link per target
     SKILL.md            lifecycle + questionnaire design rules + standard methods (PMF, NPS, Van Westendorp)
     schema.py           Survey / Question spec the LLM writes, server-side answer validation
-    store.py            SQLite (data/forms.db): surveys, invites (token ↔ crustdata_person_id, built email), responses
+    store.py            SQLite (data/forms.db): surveys, invites (token ↔ crustdata_person_id), responses
     personalize.py      invite emails from the approved template: per-person line, grounding check, fallback
     tools.py            form_create_survey, form_revise_survey, form_get_survey, form_list_surveys,
                         form_create_invite_links, form_get_responses
     server.py           FastAPI pages: /surveys list, /surveys/<id> review/approve, /s/<token> respondent form
+scripts/
+  seed_demo.py          seeds a finished demo campaign (fictional people, planted fakes, findings report)
 ```
 
 ## Adding a skill
