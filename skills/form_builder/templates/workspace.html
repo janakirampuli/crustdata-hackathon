@@ -219,6 +219,57 @@
     <p class="muted">When the survey is approved, ask the agent to launch it. Each invited person shows up here with their status.</p></div>
   {% endif %}
 
+{# ======================= RESPONSES (ranked by quality) ======================= #}
+{% elif tab == "responses" %}
+  {% macro quality_pill(tier) %}{% set qp = QUALITY.get(tier, ("Scoring…", "")) %}<span class="pill {{ qp[1] }}">{{ qp[0] }}</span>{% endmacro %}
+  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+    {% for key in ("high", "ok", "low", "spam") %}<span class="tag">{{ QUALITY[key][0] }} <b>{{ quality.tiers[key] }}</b></span>{% endfor %}
+    <span class="cap">Ranked by quality score. Nothing is removed: low-priority and likely-spam answers sink to the bottom.</span>
+    {% if responses %}
+    <form method="post" action="/surveys/{{ row.id }}/quality" style="margin-left:auto">
+      <button class="btn btn-sm" type="submit">{{ icon("check-circle", "i-sm") }} Rescore</button>
+    </form>
+    {% endif %}
+  </div>
+  {% if responses %}
+  <div class="stack" style="gap:10px">
+    {% for r in responses %}{% set t = r.target %}{% set flags = r.quality_flags or [] %}
+    <article class="panel resp {{ 'resp-dim' if r.quality_tier in ('low', 'spam') }}">
+      <div class="resp-score {{ QUALITY.get(r.quality_tier, ('', ''))[1] }}">
+        <b>{{ r.quality_score if r.quality_score is not none else "–" }}</b><span class="cap">#{{ loop.index }}</span>
+      </div>
+      <div class="stack" style="gap:8px; min-width:0">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:baseline">
+          <b style="font-weight:600">{{ t.name }}</b>
+          <span class="cap">{{ t.title or "" }}{% if t.company %} · {{ t.company }}{% endif %}</span>
+          {{ quality_pill(r.quality_tier) }}
+          {% if r.quality_llm %}<span class="tag">{{ icon("file", "i-sm") }} Text reviewed</span>{% endif %}
+          <span class="cap" style="margin-left:auto">{% if r.typing and r.typing.active_s %}{{ r.typing.active_s|round|int }}s active · {% elif r.duration_s %}{{ r.duration_s|round|int }}s · {% endif %}{{ when(r.submitted_at) }}</span>
+        </div>
+        {% if flags %}
+        <div class="kv-chips">
+          {% for f in flags|sort(attribute="delta") %}
+            <span class="flag {{ 'up' if f.delta > 0 else ('hard' if f.hard else 'down') }}" title="{{ '%+d'|format(f.delta) }} points">{{ '%+d'|format(f.delta) }} · {{ f.label }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <details>
+          <summary class="cap" style="cursor:pointer">Answers</summary>
+          <div class="answers" style="margin-top:8px">
+            {% for q in survey.questions if r.answers.get(q.id) not in (none, [], "") %}{% set a = r.answers[q.id] %}
+              <div><span>Q{{ loop.index }} {{ q.id }}</span> {{ a|join(", ") if a is iterable and a is not string else a }}</div>
+            {% endfor %}
+          </div>
+        </details>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="panel empty-state"><h3>No responses yet</h3>
+    <p class="muted">Each response is scored when it arrives: time taken, effort in typed answers, straight-lining, contradictions and duplicates, plus a model review of open text.</p></div>
+  {% endif %}
+
 {# ======================= SURVEY ======================= #}
 {% elif tab == "survey" %}
   <div class="review">
@@ -337,6 +388,13 @@
     <div class="panel kpi"><span class="cap">Opened</span><span class="v">{{ f.opened }}</span></div>
     <div class="panel kpi"><span class="cap">Opted out</span><span class="v">{{ f.opted_out }}</span></div>
   </div>
+  {% if f.counted %}
+  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+    <span class="cap">Response quality</span>
+    {% for key in ("high", "ok", "low", "spam") %}{% if stats.quality[key] %}<span class="pill {{ QUALITY[key][1] }}">{{ QUALITY[key][0] }} {{ stats.quality[key] }}</span>{% endif %}{% endfor %}
+    <a class="cap" href="/surveys/{{ row.id }}?tab=responses">See ranked responses</a>
+  </div>
+  {% endif %}
 
   <section class="panel panel-pad stack">
     <div class="section-title"><h3>Findings</h3>
@@ -399,7 +457,8 @@
         </div>
         {% else %}<p class="cap">No answers.</p>{% endif %}
       {% else %}
-        {% for a in q.answers[:12] %}<div class="quote"><span>“{{ a.text }}”</span><span class="cap">{{ a.who }}</span></div>
+        {% for a in q.answers[:12] %}<div class="quote {{ 'resp-dim' if a.quality in ('low', 'spam') }}"><span>“{{ a.text }}”</span>
+          <span class="cap">{{ a.who }}{% if a.quality %} · {{ QUALITY[a.quality][0] }}{% endif %}</span></div>
         {% else %}<p class="cap">No answers.</p>{% endfor %}
       {% endif %}
       </div>

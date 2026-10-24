@@ -3,6 +3,7 @@
 Run with `uv run forms` (FORMS_HOST / FORMS_PORT override 127.0.0.1:8000).
 """
 
+import json
 import os
 import re
 import time
@@ -25,8 +26,10 @@ STATUS = {"draft": ("Draft", ""), "changes_requested": ("Changes requested", "wa
           "approved": ("Approved", "ok"), "fielding": ("Fielding", "info"), "closed": ("Closed", "")}
 PARTICIPANT = {"created": ("Not sent", ""), "invited": ("Invited", "info"), "opened": ("Opened", "warn"),
                "responded": ("Responded", "ok"), "opted_out": ("Opted out", "bad"), "expired": ("No response", "")}
-TABS = [("progress", "Progress"), ("participants", "Participants"), ("survey", "Survey"),
+TABS = [("progress", "Progress"), ("participants", "Participants"), ("responses", "Responses"), ("survey", "Survey"),
         ("audience", "Audience"), ("analytics", "Analytics"), ("activity", "Activity")]
+QUALITY = {"high": ("High quality", "ok"), "ok": ("OK", "info"), "low": ("Low priority", "warn"),
+           "spam": ("Likely spam", "bad")}
 VERIFIED = {"pending": ("Pending", ""), "ok": ("Verified", "ok"), "flag": ("Flagged", "warn"), "fail": ("Failed", "bad")}
 
 
@@ -78,7 +81,7 @@ def make_templates(*extra_dirs: Path) -> Jinja2Templates:
     """Templates for console pages. Extra dirs come first, so other apps can add pages that extend console.html."""
     t = Jinja2Templates(directory=[*extra_dirs, HERE / "templates"],
                         context_processors=[lambda request: {"rail_surveys": rail_surveys()}])
-    t.env.globals.update(OPS=OPS, OTHER=OTHER, STATUS=STATUS, VERIFIED=VERIFIED, PARTICIPANT=PARTICIPANT, TABS=TABS)
+    t.env.globals.update(QUALITY=QUALITY, OPS=OPS, OTHER=OTHER, STATUS=STATUS, VERIFIED=VERIFIED, PARTICIPANT=PARTICIPANT, TABS=TABS)
     t.env.filters.update(humanize=humanize, mark_placeholders=mark_placeholders, mark_line=mark_line)
     return t
 
@@ -144,6 +147,12 @@ def workspace(request: Request, survey_id: str, tab: str | None = None, split: s
         ctx["timeline"] = _timeline(store.list_responses(survey_id), row)
     elif tab == "participants":
         ctx["participants"] = store.list_participants(survey_id)
+    elif tab == "responses":
+        from skills.campaign import quality
+
+        responses = store.list_responses(survey_id)
+        ctx["responses"] = sorted(responses, key=lambda r: -(r["quality_score"] if r["quality_score"] is not None else -1))
+        ctx["quality"] = quality.summary(survey_id)
     elif tab == "analytics":
         ctx["stats"] = analytics.compute(survey_id)
         ctx["split"] = split if split in analytics.SEGMENTS else "seniority"
@@ -212,6 +221,21 @@ def add_participant(request: Request, survey_id: str, name: str = Form(...), ema
                                                 for p in result.get("not_sent", []) + result.get("skipped", [])]), None)
     suffix = f"&error={quote(str(problem))}" if problem else ""
     return RedirectResponse(f"/surveys/{survey_id}?tab=participants{suffix}", status_code=303)
+
+
+@app.post("/surveys/{survey_id}/quality")
+def rescore_quality(request: Request, survey_id: str):
+    """Rescore every response now, and queue a model review of any open text that hasn't had one."""
+    from skills.campaign import quality
+
+    if store.get_survey(survey_id) is None:
+        return _not_found(request, "No survey with that id.")
+    quality.rescore(survey_id)
+    if os.environ.get("QUALITY_REVIEW", "on") != "off":
+        for r in store.list_responses(survey_id):
+            if not r["quality_llm"]:
+                quality.review_in_background(survey_id, r["token"])
+    return RedirectResponse(f"/surveys/{survey_id}?tab=responses", status_code=303)
 
 
 @app.post("/surveys/{survey_id}/nudge")
@@ -301,15 +325,42 @@ async def respond_submit(request: Request, token: str):
     if errors:
         return _render(request, "respond.html", 422, survey=row["spec"], target=invite["target"], token=token,
                        values=raw, errors=errors)
-    if not store.save_response(invite, answers, request.headers.get("user-agent")):
+    typing, duration = _typing_meta(raw), _seconds_since(invite.get("opened_at"))
+    if not store.save_response(invite, answers, request.headers.get("user-agent"), duration, typing):
         return _render(request, "message.html", title="Already answered",
                        message="We already have your answers for this survey. Thank you!")
-    from skills.campaign import service
+    from skills.campaign import quality, service
 
     store.log_event(invite["survey_id"], "responded", token)
+    quality.rescore(invite["survey_id"])
+    if os.environ.get("QUALITY_REVIEW", "on") != "off" and any(
+            q.type == "text" and answers.get(q.id) for q in row["spec"].questions):
+        quality.review_in_background(invite["survey_id"], token)
     service.after_response(invite["survey_id"])
     return _render(request, "message.html", title="Thank you",
                    message="Your answers are in. Thank you for taking the time.")
+
+
+def _typing_meta(raw: dict) -> dict | None:
+    """Behaviour counts the form script posts as __meta: active seconds, and keys / pastes per text field."""
+    try:
+        meta = json.loads((raw.get("__meta") or [""])[0] or "null")
+    except ValueError:
+        return None
+    if not isinstance(meta, dict):
+        return None
+    fields = {str(k)[:40]: {key: int(v.get(key, 0)) for key in ("keys", "pastes", "pasted_chars", "focus_ms")}
+              for k, v in (meta.get("fields") or {}).items() if isinstance(v, dict)}
+    active = meta.get("active_s")
+    return {"active_s": round(float(active), 1) if isinstance(active, (int, float)) else None, "fields": fields}
+
+
+def _seconds_since(iso: str | None) -> float | None:
+    from datetime import datetime, timezone
+
+    if not iso:
+        return None
+    return round((datetime.now(timezone.utc) - datetime.fromisoformat(iso)).total_seconds(), 1)
 
 
 @app.get("/s/{token}/opt-out", response_class=HTMLResponse)

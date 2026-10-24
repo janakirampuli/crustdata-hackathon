@@ -288,7 +288,13 @@ def seed(report: bool) -> str:
             answers = {**answers_for(rng, targets[i], i), **overrides}
             if len(responded) % 2 == 0 and verified == "ok":  # about half write the optional text answer
                 answers["blocked"] = TEXT[len(responded) // 2 % len(TEXT)]
-            store.save_response(inv, answers, "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) Safari/605.1.15")
+            # Time and typing counts feed the quality score; fake 29 is the 22-second speeder its reason describes.
+            duration = 22 if i == 29 else rng.randint(95, 260)
+            text = answers.get("blocked")
+            typing = {"active_s": duration,
+                      "fields": {"blocked": {"keys": len(text) + rng.randint(0, 12), "pastes": 0}} if text else {}}
+            store.save_response(inv, answers, "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) Safari/605.1.15",
+                                duration, typing)
             _set_verification(inv["token"], verified, reason)
             store.log_event(survey_id, "responded", inv["token"])
             if verified != "ok":
@@ -298,6 +304,9 @@ def seed(report: bool) -> str:
     clock.at(clock.t + timedelta(seconds=30))
     store.close_survey(survey_id, "target reached")
     store.log_event(survey_id, "closed", detail={"reason": "target reached"})
+    from skills.campaign import quality
+
+    quality.rescore(survey_id)  # rules only; the model review of open text runs from the workspace's Rescore
 
     if report:
         from skills.campaign import insights

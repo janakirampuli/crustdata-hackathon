@@ -86,8 +86,11 @@ def compute(survey_id: str) -> dict:
     questions = [summarize_question(q, [r["answers"].get(q.id) for r in responses]) for q in survey.questions]
     for qs, r_text in zip(questions, survey.questions):
         if qs["type"] == "text":
-            qs["answers"] = [{"text": r["answers"][r_text.id], "who": _who(r["target"])}
-                             for r in responses if r["answers"].get(r_text.id)]
+            # Best answers first: quotes and the findings report lean on high-quality responses.
+            qs["answers"] = sorted(({"text": r["answers"][r_text.id], "who": _who(r["target"]),
+                                     "quality": r.get("quality_tier"), "score": r.get("quality_score")}
+                                    for r in responses if r["answers"].get(r_text.id)),
+                                   key=lambda a: -(a["score"] if a["score"] is not None else -1))
 
     segments = {}
     for seg in SEGMENTS:
@@ -110,6 +113,7 @@ def compute(survey_id: str) -> dict:
                    "responded": st["responded"], "opted_out": st["opted_out"], "counted": len(responses)},
         "verification": _verification(every),
         "response_rate_pct": _pct(st["responded"], st["invited"]),
+        "quality": _quality_mix(responses),
         "questions": questions,
         "segments": segments,
     }
@@ -121,6 +125,11 @@ def _verification(responses: list[dict]) -> dict:
     notes = lambda state: [{"who": _who(r["target"]), "reason": r["reason"]} for r in responses if r["verified"] == state]
     return {"verified": counts["ok"], "flagged": counts["flag"], "pending": counts["pending"],
             "excluded": counts["fail"], "flagged_reasons": notes("flag"), "excluded_reasons": notes("fail")}
+
+
+def _quality_mix(responses: list[dict]) -> dict:
+    mix = Counter(r.get("quality_tier") or "unscored" for r in responses)
+    return {k: mix.get(k, 0) for k in ("high", "ok", "low", "spam", "unscored")}
 
 
 def _who(target: dict) -> str:

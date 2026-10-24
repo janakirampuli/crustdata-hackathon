@@ -141,7 +141,7 @@ def test_config_form_and_every_tab_render(client):
     assert store.get_survey(survey_id)["config"].max_invites == 7
     token = launch(survey_id, [target(1), target(2)])["invited"][0]["token"]
     client.post(f"/s/{token}", data={"role": "Decide", "pain": "3"})
-    for tab in ("progress", "participants", "survey", "audience", "analytics", "activity"):
+    for tab in ("progress", "participants", "responses", "survey", "audience", "analytics", "activity"):
         page = client.get(f"/surveys/{survey_id}?tab={tab}")
         assert page.status_code == 200, tab
     assert "p1@co1.com" in client.get(f"/surveys/{survey_id}?tab=participants").text

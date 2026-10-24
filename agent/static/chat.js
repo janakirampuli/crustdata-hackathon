@@ -164,6 +164,10 @@ const workspaceBtn = (url, label) => url ? `<a class="btn btn-sm" href="${esc(ur
 const funnelTags = st => st ? `<div class="tags">${[["Invited", st.invited], ["Opened", st.opened], ["Responded", st.responded], ["Opted out", st.opted_out]]
   .map(([k, v]) => `<span class="tag">${k} <b>${fmt(v ?? 0)}</b></span>`).join("")}</div>` : "";
 
+const QUALITY = {high: ["High quality", "ok"], ok: ["OK", "info"], low: ["Low priority", "warn"], spam: ["Likely spam", "bad"]};
+const qualityTags = q => q && Object.values(q).some(Boolean) ? `<div class="tags">${["high", "ok", "low", "spam"]
+  .filter(k => q[k]).map(k => pill([`${QUALITY[k][0]} ${q[k]}`, QUALITY[k][1]])).join(" ")}</div>` : "";
+
 const RENDER = {
   campaign_configure(c) {
     const k = c.config || {};
@@ -194,7 +198,7 @@ ${esc(em.sample.body)}</div></details>` : "";
     return {
       open: true,
       meta: `${fmt(st.responded ?? 0)} / ${fmt(c.target_responses)} responses · ${statusPill(c.status)}`,
-      body: funnelTags(st) + (c.recommendation ? `<p class="cap">Pace: ${esc(c.recommendation)}${c.minutes_left != null ? ` · ${fmt(c.minutes_left)} min left` : ""}</p>` : "")
+      body: funnelTags(st) + qualityTags(c.quality) + (c.recommendation ? `<p class="cap">Pace: ${esc(c.recommendation)}${c.minutes_left != null ? ` · ${fmt(c.minutes_left)} min left` : ""}</p>` : "")
         + workspaceBtn(c.workspace_url, "Open progress"),
     };
   },
@@ -268,10 +272,10 @@ ${esc(em.sample.body)}</div></details>` : "";
   form_get_responses(c) {
     const st = c.stats || {};
     const rows = (c.responses || []).map(r => `<tr><td>${esc(r.target?.name)}<span class="sub">${esc(r.target?.title || "")}</span></td>
-      <td>${esc(r.target?.company)}</td><td>${pill(VERIFIED[r.verified] || [r.verified, ""])}</td>
+      <td>${esc(r.target?.company)}</td><td>${r.quality_tier ? pill([`${QUALITY[r.quality_tier][0]} · ${r.quality_score}`, QUALITY[r.quality_tier][1]]) : pill(VERIFIED[r.verified] || [r.verified, ""])}</td>
       <td class="mono">${esc((r.submitted_at || "").slice(0, 16).replace("T", " "))}</td></tr>`);
     return {open: rows.length > 0, meta: `${fmt(st.responded ?? 0)} of ${fmt(st.invited ?? 0)} responded`,
-            body: rows.length ? table(["Respondent", "Company", "Verification", "Submitted (UTC)"], rows) : ""};
+            body: rows.length ? table(["Respondent", "Company", "Quality", "Submitted (UTC)"], rows) : ""};
   },
 };
 

@@ -30,6 +30,21 @@ One approved survey is one campaign. Every person invited, every email and every
 5. **Close.** The survey closes on its own when `target_responses` is reached or the deadline passes. `campaign_close` ends it early.
 6. **Report.** `campaign_report` computes the stats and writes the findings. Give the user the headline and the `analytics_url`. Don't restate every number: the page shows them.
 
+## Response quality
+
+Every response gets a quality score from 0 to 100, a tier (high, ok, low or spam) and reasons. The signals are:
+- time taken compared with the estimate;
+- typed versus pasted text, and keyboard mash;
+- straight-lining;
+- contradictions and implausible numbers;
+- duplicates;
+- a model review of open text.
+
+Nothing is excluded. `campaign_status` and `form_get_responses` include the tiers.
+- Lead with high and ok answers when you summarise.
+- Mention how many responses are low or likely spam.
+- Never quote a spam response.
+
 ## Rules
 
 - Emails are written to the outbox (`email_mode: log`). Say so if the user asks whether people were emailed.

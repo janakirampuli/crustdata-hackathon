@@ -78,6 +78,8 @@ COLUMNS = {
                 "closed_at": "TEXT", "close_reason": "TEXT", "brief": "TEXT",
                 "email_preview": "TEXT"},  # JSON {samples, emails}: the invite template filled for a few real people
     "outbox": {"provider_id": "TEXT", "error": "TEXT"},
+    "responses": {"duration_s": "REAL", "typing": "TEXT", "quality_score": "INTEGER", "quality_tier": "TEXT",
+                  "quality_flags": "TEXT", "quality_llm": "TEXT"},
     "invites": {"email": "TEXT", "state": "TEXT NOT NULL DEFAULT 'created'", "invited_at": "TEXT",
                 "last_contacted_at": "TEXT", "followups_sent": "INTEGER NOT NULL DEFAULT 0", "opted_out_at": "TEXT"},
 }
@@ -210,14 +212,15 @@ def get_response(token: str) -> dict | None:
     return {**dict(row), "answers": json.loads(row["answers"])} if row else None
 
 
-def save_response(invite: dict, answers: dict, user_agent: str | None = None) -> bool:
+def save_response(invite: dict, answers: dict, user_agent: str | None = None, duration_s: float | None = None,
+                  typing: dict | None = None) -> bool:
     """Stores the first submission for a token. Returns False if the token was already used."""
     with connect() as conn:
         cur = conn.execute("""INSERT OR IGNORE INTO responses
-                              (token, survey_id, crustdata_person_id, answers, user_agent, submitted_at)
-                              VALUES (?, ?, ?, ?, ?, ?)""",
+                              (token, survey_id, crustdata_person_id, answers, user_agent, submitted_at, duration_s, typing)
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                            (invite["token"], invite["survey_id"], invite["crustdata_person_id"],
-                            json.dumps(answers), user_agent, _now()))
+                            json.dumps(answers), user_agent, _now(), duration_s, json.dumps(typing) if typing else None))
         if cur.rowcount == 1:
             conn.execute("UPDATE invites SET state = 'responded' WHERE token = ?", (invite["token"],))
     return cur.rowcount == 1
@@ -225,9 +228,26 @@ def save_response(invite: dict, answers: dict, user_agent: str | None = None) ->
 
 def list_responses(survey_id: str) -> list[dict]:
     with connect() as conn:
-        rows = conn.execute("""SELECT r.*, i.target FROM responses r JOIN invites i USING (token)
-                               WHERE r.survey_id = ? ORDER BY r.submitted_at""", (survey_id,)).fetchall()
-    return [{**dict(r), "answers": json.loads(r["answers"]), "target": json.loads(r["target"])} for r in rows]
+        rows = conn.execute("""SELECT r.*, i.target, i.opened_at FROM responses r JOIN invites i USING (token)
+                               WHERE r.survey_id = ? ORDER BY r.submitted_at, r.rowid""", (survey_id,)).fetchall()
+    out = []
+    for r in rows:
+        d = dict(r)
+        for key in ("typing", "quality_flags", "quality_llm"):
+            d[key] = json.loads(d[key]) if d.get(key) else None
+        out.append({**d, "answers": json.loads(r["answers"]), "target": json.loads(r["target"])})
+    return out
+
+
+def set_quality(token: str, score: int, tier: str, flags: list[dict]) -> None:
+    with connect() as conn:
+        conn.execute("UPDATE responses SET quality_score = ?, quality_tier = ?, quality_flags = ? WHERE token = ?",
+                     (score, tier, json.dumps(flags), token))
+
+
+def set_quality_llm(token: str, review: dict) -> None:
+    with connect() as conn:
+        conn.execute("UPDATE responses SET quality_llm = ? WHERE token = ?", (json.dumps(review), token))
 
 
 def invite_stats(survey_id: str) -> dict:

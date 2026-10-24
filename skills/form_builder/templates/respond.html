@@ -2,6 +2,29 @@
 {% from "_icons.html" import icon %}
 {% from "_questions.html" import render %}
 {% block title %}{{ survey.title }}{% endblock %}
+{% block scripts %}
+<script>
+  // Quality signals: counts only, never the keystrokes themselves.
+  (() => {
+    const form = document.querySelector("form.respond-card"), fields = {};
+    let active = 0, last = performance.now(), visible = !document.hidden;
+    const tick = () => { const now = performance.now(); if (visible) active += now - last; last = now; };
+    document.addEventListener("visibilitychange", () => { tick(); visible = !document.hidden; });
+    form.querySelectorAll("textarea, input[type=text]").forEach(el => {
+      const f = fields[el.name] = {keys: 0, pastes: 0, pasted_chars: 0, focus_ms: 0};
+      let focusAt = null;
+      el.addEventListener("keydown", e => { if (e.key.length === 1 || e.key === "Backspace") f.keys++; });
+      el.addEventListener("paste", e => { f.pastes++; f.pasted_chars += (e.clipboardData?.getData("text") || "").length; });
+      el.addEventListener("focus", () => focusAt = performance.now());
+      el.addEventListener("blur", () => { if (focusAt) f.focus_ms += Math.round(performance.now() - focusAt); focusAt = null; });
+    });
+    form.addEventListener("submit", () => {
+      tick();
+      document.getElementById("__meta").value = JSON.stringify({active_s: active / 1000, fields});
+    });
+  })();
+</script>
+{% endblock %}
 {% block body %}
 <main class="respond">
   <div class="respond-top">
@@ -23,6 +46,7 @@
 
     {{ render(survey, values, errors) }}
 
+    <input type="hidden" name="__meta" id="__meta" value="">
     <div class="respond-foot">
       <p class="privacy">{{ icon("lock", "i-sm") }}<span>This link was made for you and works once. Answers are used for this research only, never for sales.</span></p>
       <button class="btn btn-primary btn-lg" type="submit">Submit answers {{ icon("arrow-right") }}</button>

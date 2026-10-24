@@ -122,7 +122,9 @@ def status(survey_id: str) -> dict:
     row = store.get_survey(survey_id)
     st = store.invite_stats(survey_id)
     config = row["config"]
-    out = {"status": row["status"], "stats": st, "target_responses": config.target_responses,
+    from . import quality
+
+    out = {"status": row["status"], "stats": st, "quality": quality.summary(survey_id)["tiers"], "target_responses": config.target_responses,
            "max_invites": config.max_invites, "invites_left": max(config.max_invites - st["invited"], 0),
            "launched_at": row["launched_at"], "closes_at": row["closes_at"], "closed_at": row["closed_at"],
            "close_reason": row["close_reason"]}

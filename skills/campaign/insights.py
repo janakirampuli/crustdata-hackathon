@@ -18,7 +18,10 @@ Rules:
   only for its `verified` count, and name flagged or pending answers if there are any.
 - With fewer than 10 responses, say the results are directional, not conclusive.
 - Segment differences only count when each segment has at least 3 respondents; otherwise skip them.
-- Quotes come verbatim from open-text answers, attributed by role and company type, never by name.
+- Quotes come verbatim from open-text answers, attributed by role and company type, never by name. Prefer answers
+  with quality "high" or "ok"; never quote "spam".
+- STATS.quality counts responses by quality tier. If any are "low" or "spam", say how many in Caveats and treat
+  conclusions that depend on them with more caution.
 - Plain, direct sentences. No filler.
 
 Write markdown with exactly these sections:

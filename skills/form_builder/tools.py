@@ -180,7 +180,8 @@ def get_responses(survey_id: str) -> dict:
     return {"survey_id": survey_id, "stats": store.invite_stats(survey_id), "responses": [
         {"token": r["token"], "crustdata_person_id": r["crustdata_person_id"], "answers": r["answers"],
          "submitted_from_email": r["submitted_from_email"], "verified": r["verified"], "reason": r["reason"],
-         "submitted_at": r["submitted_at"],
+         "submitted_at": r["submitted_at"], "quality_score": r["quality_score"], "quality_tier": r["quality_tier"],
+         "quality_reasons": [f["label"] for f in (r["quality_flags"] or []) if f["delta"] < 0],
          "target": {k: r["target"].get(k) for k in ("name", "title", "company", "company_domain")}}
         for r in store.list_responses(survey_id)]}
 
