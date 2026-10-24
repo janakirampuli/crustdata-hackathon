@@ -22,6 +22,8 @@ Rules:
   with quality "high" or "ok"; never quote "spam".
 - STATS.quality counts responses by quality tier. If any are "low" or "spam", say how many in Caveats and treat
   conclusions that depend on them with more caution.
+- The brief was written before fieldwork, so its sample size and audience sizing are plans. FIELDWORK and STATS.funnel
+  say what actually happened; report those and don't treat the difference as an error.
 - Plain, direct sentences. No filler.
 
 Write markdown with exactly these sections:
@@ -46,6 +48,8 @@ AUDIENCE: {audience}
 BRIEF:
 {brief}
 
+FIELDWORK: target {target} responses, at most {max_invites} invites.
+
 STATS:
 {stats}
 """
@@ -62,6 +66,7 @@ def generate(survey_id: str) -> dict:
         question=row["spec"].research_question,
         audience=audience.description if audience else row["spec"].audience,
         brief=(audience.brief if audience and audience.brief else row["brief"] or "(no brief recorded)"),
+        target=row["config"].target_responses, max_invites=row["config"].max_invites,
         stats=json.dumps({k: v for k, v in stats.items() if k != "survey_id"}, ensure_ascii=False, indent=1),
     )
     # Thinking shares max_tokens with the answer, so leave room for both; streaming avoids long-request timeouts.

@@ -29,7 +29,7 @@ One approved survey is one campaign. Every person invited, every email and every
    - If you're behind pace with invites left, find the next batch (exclude people already invited) and call `campaign_launch` again.
    - `campaign_nudge` sends the follow-up now. The scheduler also sends it automatically after `followup_after_minutes`.
 5. **Close.** The survey closes on its own when `target_responses` is reached or the deadline passes. `campaign_close` ends it early.
-6. **Report.** `campaign_report` computes the stats and writes the findings. Give the user the headline and the `analytics_url`. Don't restate every number: the page shows them.
+6. **Report.** `campaign_report` computes the stats and writes the findings. Give the user the headline and the `analytics_url`. Don't restate every number: the page shows them. Keep the reply short: the headline, two or three findings and the link. The report's caveats are on the page.
 
 ## Response quality
 

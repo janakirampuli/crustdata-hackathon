@@ -50,6 +50,7 @@ skills/
                         form_create_invite_links, form_get_responses
     server.py           FastAPI pages: /surveys list, /surveys/<id> review/approve, /s/<token> respondent form
 scripts/
+  seed_responses.py     seeds respondents' answers into a campaign the agent launched (anonymised, planted fakes)
   seed_demo.py          seeds a finished demo campaign (fictional people, planted fakes, findings report)
 ```
 
