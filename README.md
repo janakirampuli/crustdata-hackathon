@@ -38,7 +38,7 @@ skills/
     service.py          launch (respects max_invites), follow-ups, auto-close at target/deadline, 30s scheduler
     mailer.py           invite + follow-up emails; EMAIL_MODE=log records them in the outbox, EMAIL_MODE=resend sends via Resend
     analytics.py        funnel, per-question stats, segment splits by seniority / function / company size
-    quality.py          response quality: 0-100 score, tier (high / ok / low / spam) and reasons; rules on submit + model review of open text
+    quality.py          response quality: 0-100 score, tier (high / ok / low / spam) and reasons; rules on submit + background review of open text by Jev (TypeSafe) or, without a key, Claude
     insights.py         findings report from the stats (one model call; INSIGHTS_MODEL overrides AGENT_MODEL)
     tools.py            campaign_configure, campaign_launch, campaign_status, campaign_nudge, campaign_close, campaign_report
   form_builder/ survey drafting, human approval, one identity-bound link per target

@@ -1,8 +1,9 @@
 """Response quality: ranks every response by how genuine it looks. Nothing is excluded; low-quality and likely spam
 responses sink to the bottom and carry plain-language reasons.
 
-Rules run on every submit (and rescore the whole survey, since duplicates depend on peers). A small model reviews
-open-text answers in the background and its verdict feeds the same score.
+Rules run on every submit (and rescore the whole survey, since duplicates depend on peers). In the background, open
+text gets a judgment review that feeds the same score: Jev (TypeSafe's decision model: typed yes/no and score
+questions with calibrated confidence) when TYPESAFE_API_KEY is set, otherwise a small Claude model.
 """
 
 import json
@@ -130,8 +131,11 @@ def score_response(survey: Survey, r: dict, peers: list[dict]) -> tuple[int, str
     if any(p["answers"] == answers and p.get("user_agent") == r.get("user_agent") for p in earlier):
         _flag(flags, "duplicate", "Identical answers from the same browser as an earlier response", -40, hard=True)
 
-    # Model review of the open text, when it has run.
-    for item in (r.get("quality_llm") or {}).get("answers", []):
+    # Judgment review of the open text (Jev or Claude), when it has run.
+    review = r.get("quality_llm") or {}
+    if review.get("profile_fit") is not None and review["profile_fit"] < 0.25:
+        _flag(flags, "profile_mismatch", f"Answers don't fit their profile (Jev: {review['profile_fit']:.0%} consistent)", -8)
+    for item in review.get("answers", []):
         q = questions.get(item.get("id"))
         n = survey.questions.index(q) + 1 if q else "?"
         delta = (int(item.get("relevance", 1)) + int(item.get("specificity", 1)) - 2) * 5
@@ -170,8 +174,76 @@ Answers:
 """
 
 
+# ---- Jev: narrow typed questions, combined in code (TypeSafe's composite-scoring pattern) ----
+
+RELEVANCE = ["Off topic, nonsense or no real answer", "Loosely related to the question", "Directly answers the question"]
+SPECIFICITY = ["Empty, generic filler or a platitude", "Some concrete detail",
+               "Concrete detail only a practitioner would know (tools, numbers, situations)"]
+MIN_CONFIDENCE = 0.5  # below this a Score verdict counts as neutral (confidence routing)
+
+
+def jev_enabled() -> bool:
+    return bool(os.environ.get("TYPESAFE_API_KEY")) and os.environ.get("QUALITY_REVIEWER", "auto") in ("auto", "jev")
+
+
+def _jev_client():
+    from typesafe_sdk import TypeSafeClient
+
+    return TypeSafeClient(model=os.environ.get("JEV_MODEL", "jev-latest"))
+
+
+def _level(answer, levels: int) -> int:
+    """Score answer -> 0..levels-1, or the middle level when Jev isn't confident."""
+    if answer is None or answer.confidence < MIN_CONFIDENCE:
+        return (levels - 1) // 2
+    return max(0, min(levels - 1, round(answer.score)))
+
+
+def _review_with_jev(survey: Survey, response: dict, texts: list[dict]) -> dict:
+    from typesafe_sdk import Noul, Score
+
+    t = response["target"]
+    profile = {k: t.get(k) for k in ("title", "seniority", "function", "company", "company_headcount") if t.get(k)}
+    state = json.dumps({"survey": survey.title, "respondent_profile": profile,
+                        "answers": {q.prompt: response["answers"].get(q.id) for q in survey.questions
+                                    if response["answers"].get(q.id) not in (None, "", [])}}, ensure_ascii=False)
+    questions = {"profile_fit": Noul(instructions="The respondent's answers are plausible for someone with this job "
+                                                  "title, seniority and company size")}
+    for x in texts:
+        about = f'the answer to "{x["question"]}" (the answer is: "{x["answer"]}")'
+        questions[f'{x["id"]}.relevance'] = Score(instructions=f"How directly {about} addresses that question",
+                                                  criteria=RELEVANCE)
+        questions[f'{x["id"]}.specificity'] = Score(instructions=f"How specific and concrete {about} is",
+                                                    criteria=SPECIFICITY)
+        questions[f'{x["id"]}.gibberish'] = Noul(instructions=f"{about[0].upper() + about[1:]} is gibberish, keyboard "
+                                                              "mash or placeholder text")
+        questions[f'{x["id"]}.machine'] = Noul(instructions=f"{about[0].upper() + about[1:]} reads like generic "
+                                                            "machine-written text rather than a person's own words")
+    with _jev_client() as client:
+        result = client.system_one(state=state, questions=questions)
+
+    answers = []
+    for x in texts:
+        rel, spec = result.scores.get(f'{x["id"]}.relevance'), result.scores.get(f'{x["id"]}.specificity')
+        gib, mach = result.nouls.get(f'{x["id"]}.gibberish'), result.nouls.get(f'{x["id"]}.machine')
+        relevance, specificity = _level(rel, len(RELEVANCE)), _level(spec, len(SPECIFICITY))
+        if gib is not None and gib.noul >= 0.8:
+            relevance = specificity = 0
+        conf = min(a.confidence for a in (rel, spec) if a is not None) if rel or spec else 0
+        note = ("gibberish" if relevance == specificity == 0 and gib is not None and gib.noul >= 0.8 else
+                f"{['off topic', 'loosely on topic', 'on topic'][relevance]}, "
+                f"{['generic', 'some detail', 'concrete detail'][specificity]}")
+        answers.append({"id": x["id"], "relevance": relevance, "specificity": specificity,
+                        "ai_like": bool(mach is not None and mach.noul >= 0.75),
+                        "note": f"Jev: {note} ({conf:.0%} confident)"})
+    fit = result.nouls.get("profile_fit")
+    return {"provider": "jev", "model": result.model, "answers": answers,
+            "profile_fit": round(fit.noul, 3) if fit is not None else None,
+            "raw": {k: v.model_dump(exclude={"legend", "probabilities"}) for k, v in result.answers.items()}}
+
+
 def review_text(survey_id: str, token: str) -> dict | None:
-    """One small-model call per response with open text. Stores the verdict and rescores the survey."""
+    """One judgment call per response with open text (Jev if configured, else Claude). Stores it and rescores."""
     row = store.get_survey(survey_id)
     response = next((r for r in store.list_responses(survey_id) if r["token"] == token), None)
     if row is None or response is None:
@@ -180,6 +252,11 @@ def review_text(survey_id: str, token: str) -> dict | None:
              for q in row["spec"].questions if q.type == "text" and response["answers"].get(q.id)]
     if not texts:
         return None
+    if jev_enabled():
+        review = _review_with_jev(row["spec"], response, texts)
+        store.set_quality_llm(token, review)
+        rescore(survey_id)
+        return review
     t = response["target"]
     who = " · ".join(x for x in (t.get("title"), t.get("seniority"), t.get("company")) if x) or "unknown"
     model = os.environ.get("QUALITY_MODEL", "claude-haiku-5-5")
@@ -189,7 +266,7 @@ def review_text(survey_id: str, token: str) -> dict | None:
         b.get("text", "") for b in message.content if isinstance(b, dict))
     match = re.search(r"\{.*\}", raw, re.S)
     review = json.loads(match.group(0)) if match else {"answers": []}
-    review["model"] = model
+    review.update(model=model, provider="claude")
     store.set_quality_llm(token, review)
     rescore(survey_id)
     return review

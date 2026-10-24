@@ -107,3 +107,53 @@ def test_summary_counts_tiers(campaign):
     submit(t[1], {"role": "Decide", "pain": 3, "trust": 3}, active_s=5)
     mix = quality.summary(survey_id)
     assert mix["tiers"]["high"] == 1 and mix["tiers"]["spam"] == 1 and mix["total"] == 2
+
+
+class FakeJev:
+    """Stands in for TypeSafeClient: every text answer is on topic and concrete; the profile doesn't fit."""
+    seen = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def system_one(self, state, questions):
+        from types import SimpleNamespace
+
+        from typesafe_sdk import NoulAnswer, ScoreAnswer
+
+        FakeJev.seen.append((json.loads(state), set(questions)))
+        scores = {k: ScoreAnswer(type="score", score=2.0, confidence=0.9, legend={}, probabilities={})
+                  for k in questions if k.endswith((".relevance", ".specificity"))}
+        nouls = {k: NoulAnswer(type="noul", noul=0.05) for k in questions if k.endswith((".gibberish", ".machine"))}
+        nouls["profile_fit"] = NoulAnswer(type="noul", noul=0.1)
+        return SimpleNamespace(model="jev-1.13.0", scores=scores, nouls=nouls, answers={**scores, **nouls})
+
+
+def test_jev_review_scores_text_and_profile_fit(campaign, monkeypatch):
+    monkeypatch.setenv("TYPESAFE_API_KEY", "ts_test")
+    monkeypatch.setattr(quality, "_jev_client", lambda: FakeJev())
+    survey_id, t = campaign
+    submit(t[0], {"role": "Decide", "pain": 4, "trust": 2, "gap": GOOD_TEXT})
+    before = by_token(survey_id)[t[0]]["quality_score"]
+    review = quality.review_text(survey_id, t[0])
+
+    state, keys = FakeJev.seen[-1]
+    assert keys == {"profile_fit", "gap.relevance", "gap.specificity", "gap.gibberish", "gap.machine"}
+    assert state["answers"]["Biggest gap?"] == GOOD_TEXT
+    assert review["provider"] == "jev" and review["answers"][0]["relevance"] == 2 and review["profile_fit"] == 0.1
+    after = by_token(survey_id)[t[0]]
+    labels = [f["label"] for f in after["quality_flags"]]
+    assert "Q5: Jev: on topic, concrete detail (90% confident)" in labels
+    assert any(label.startswith("Answers don't fit their profile") for label in labels)
+    assert after["quality_score"] == min(100, before + 10 - 8)
+
+
+def test_low_confidence_jev_scores_count_as_neutral():
+    from typesafe_sdk import ScoreAnswer
+
+    unsure = ScoreAnswer(type="score", score=0.0, confidence=0.3, legend={}, probabilities={})
+    sure = ScoreAnswer(type="score", score=0.2, confidence=0.8, legend={}, probabilities={})
+    assert quality._level(unsure, 3) == 1 and quality._level(sure, 3) == 0 and quality._level(None, 3) == 1

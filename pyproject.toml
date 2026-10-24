@@ -15,6 +15,7 @@ dependencies = [
     "jinja2>=3.1.6",
     "python-multipart>=0.0.32",
     "langgraph-checkpoint-sqlite>=3.1.2",
+    "typesafe-sdk>=0.7.5",
 ]
 
 [project.scripts]

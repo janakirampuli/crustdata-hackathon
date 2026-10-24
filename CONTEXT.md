@@ -113,7 +113,7 @@ Us: decide who qualifies (Crustdata) → contact **only** those people → each 
 
 - Response quality (teammate): every response is ranked, and nothing is excluded.
   - **Rules on submit:** speed versus the estimate, straight-lining, keyboard mash, typed versus pasted open text (the form posts keystroke and paste counts, never the text typed), optional answers, "not involved" (capped at low), number outliers, "None" plus other options, and duplicates.
-  - **Background model review** of open text for relevance, specificity and machine-written style (`QUALITY_MODEL`, default `claude-haiku-5-5`; `QUALITY_REVIEW=off` disables it).
+  - **Background review with Jev** (TypeSafe's decision model) when `TYPESAFE_API_KEY` is set. One call per response asks narrow typed questions and combines them in code: per open answer, relevance and specificity (Score), plus gibberish and machine-written (Noul); for the whole response, whether the answers fit the person's Crustdata profile (Noul). Low-confidence Score verdicts count as neutral. Without a key, `claude-haiku-5-5` reviews instead (`QUALITY_MODEL`). `QUALITY_REVIEW=off` disables the review.
   - **Where it shows:** a 0–100 score, a tier (high / ok / low priority / likely spam) and reasons on the workspace's new Responses tab (ranked, with a Rescore button), a quality mix on Analytics, and quality-sorted quotes. The findings report avoids spam quotes and notes low-quality counts in its caveats.
 
 **Still to build**
