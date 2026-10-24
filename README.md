@@ -32,4 +32,4 @@ skills/
 
 Create `skills/<name>/SKILL.md` with `name` / `description` frontmatter. Optionally add `tools.py` with `TOOLS = [...]` (LangChain `@tool`s that return dicts). It's picked up automatically. Set `enabled: false` in the frontmatter to park it.
 
-Model: set `AGENT_MODEL` in `.env` (required; the example uses `claude-sonnet-5-5`). Don't pass `temperature`: the 5.5 models reject it.
+Model: set `AGENT_MODEL` in `.env` (required; the example uses `claude-sonnet-5-5`). Don't pass `temperature`: Opus 5.5 rejects it.
