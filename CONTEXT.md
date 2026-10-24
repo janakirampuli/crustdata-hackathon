@@ -102,6 +102,7 @@ Us: decide who qualifies (Crustdata) → contact **only** those people → each 
 
 - Agent backbone + Crustdata skill: done and tested live. See [README.md](README.md) to run it.
 - Form builder: done (teammate). Survey drafting with a human approval gate, one identity-bound link per target, and response collection. Run it with `uv run forms`; set `FORMS_BASE_URL` to a public tunnel URL for real invites.
+- Chat UI: done. `uv run web` serves the chat at `/chat` and mounts the form server on the same port, so `/surveys` and `/s/<token>` keep working and `FORMS_BASE_URL` doesn't change. Turns stream over SSE, and tool results render as cards: people tables, survey approve buttons, invite links, response counts. The thread lives in the in-memory checkpointer, so a page reload restores it but a server restart wipes it. **Teammate:** a new tool gets a generic card automatically; add a renderer in `agent/static/chat.html` (`RENDER`) for a nicer one.
 - Business emails: `crustdata_enrich_contact` returns real emails via `/person/enrich` when `CRUSTDATA_MOCK_CONTACT_ENRICH=false`; set it to `true` to mock. Mock emails are plus-addresses of `MOCK_EMAIL_INBOX` (or `@mock.invalid`), marked `mocked: true`, so outreach can't reach strangers. **Teammate:** in mock mode the email domain won't match the employer, so the domain-vs-employer verification check has to skip or flag mocked targets.
 
 **Still to build**

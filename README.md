@@ -7,9 +7,10 @@ See [CONTEXT.md](CONTEXT.md) for the idea, the user flow and the work split.
 ```bash
 cp .env.example .env        # fill API keys; AGENT_MODEL picks the model
 uv sync
-uv run agent                # REPL
+uv run web                  # chat UI: http://localhost:8000/chat (also serves /surveys and /s/<token>)
+uv run agent                # terminal REPL
 uv run agent "Find 10 engineering leaders at Bengaluru startups with 20-200 people"
-uv run forms                # form server: http://localhost:8000/surveys (review + approve), /s/<token> (respondents)
+uv run forms                # form pages only: http://localhost:8000/surveys (review + approve), /s/<token> (respondents)
 uv run pytest -q            # offline tests
 ```
 
@@ -20,6 +21,8 @@ agent/
   graph.py      LangGraph backbone: model node ⇄ tool node; system prompt = base + every SKILL.md
   skills.py     discovers skills/<name>/SKILL.md (+ tools.py exposing TOOLS)
   cli.py        terminal driver
+  web.py        chat UI server: streams turns over SSE, mounts the form server on the same port
+  static/chat.html   single-page chat (tool results render as people tables, survey and invite cards)
 skills/
   crustdata/    Crustdata knowledge + tools (ported from Kris@Work)
     SKILL.md            query-authoring rules, vocabularies, examples, person filter catalog

@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verified Research</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --text: #1c1c1a; --muted: #6b6b66; --line: #e3e3de; --soft: #efefeb;
+    --accent: #2f5bd3; --accent-text: #ffffff; --accent-soft: #e8eefc; --ok: #1f7a4d; --warn: #a86400; --bad: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413; --card: #1e1e1c; --text: #ececea; --muted: #a3a39d; --line: #33332f; --soft: #262624;
+      --accent: #7b9cff; --accent-text: #0d0d0c; --accent-soft: #232b40; --ok: #5cc28d; --warn: #e0a13a; --bad: #f2867e;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); display: flex; flex-direction: column;
+         font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  button { font: inherit; cursor: pointer; }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line);
+           background: var(--card); }
+  .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-text);
+          display: grid; place-items: center; font-weight: 800; flex: none; }
+  .brand { font-weight: 700; }
+  .tagline { color: var(--muted); font-size: 0.85rem; }
+  header nav { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text);
+         font-weight: 600; font-size: 0.875rem; text-decoration: none; }
+  .btn:hover { background: var(--soft); }
+  .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+
+  #scroll { flex: 1; overflow-y: auto; }
+  #log { max-width: 900px; margin: 0 auto; padding: 24px 16px 32px; }
+
+  .empty { text-align: center; padding: 10vh 0 0; }
+  .empty h1 { font-size: 1.9rem; margin: 0 0 8px; line-height: 1.2; }
+  .empty p { color: var(--muted); margin: 0 auto 28px; max-width: 560px; }
+  .suggest { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; text-align: left; max-width: 720px; margin: 0 auto; }
+  @media (max-width: 600px) { .suggest { grid-template-columns: 1fr; } }
+  .suggest button { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px;
+                    color: var(--text); text-align: left; }
+  .suggest button:hover { border-color: var(--accent); }
+  .suggest b { display: block; font-size: 0.8rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+
+  .user { display: flex; justify-content: flex-end; margin: 20px 0 12px; }
+  .user div { background: var(--accent-soft); border-radius: 14px 14px 4px 14px; padding: 10px 14px; max-width: 80%;
+              white-space: pre-wrap; word-break: break-word; }
+  .assistant { margin: 10px 0; word-break: break-word; }
+  .assistant > :first-child { margin-top: 0; } .assistant > :last-child { margin-bottom: 0; }
+  .assistant pre { background: var(--soft); padding: 10px 12px; border-radius: 8px; overflow-x: auto; }
+  .assistant code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
+  .assistant table { border-collapse: collapse; margin: 8px 0; display: block; overflow-x: auto; }
+  .assistant th, .assistant td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+
+  .tool { background: var(--card); border: 1px solid var(--line); border-radius: 10px; margin: 10px 0; overflow: hidden; }
+  .tool-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 0.9rem; }
+  .tool-name { font-weight: 650; }
+  .tool-meta { color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.running { background: var(--accent); animation: pulse 1s infinite ease-in-out; }
+  .dot.ok { background: var(--ok); } .dot.err { background: var(--bad); }
+  @keyframes pulse { 50% { opacity: 0.25; } }
+  .tool-body { padding: 0 14px 12px; font-size: 0.875rem; }
+  .tool-body:empty { display: none; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chip { background: var(--soft); border-radius: 6px; padding: 2px 8px; font-size: 0.8rem; }
+  .chip i { color: var(--muted); font-style: normal; }
+  .tool table { width: 100%; border-collapse: collapse; }
+  .tool th, .tool td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .tool th { color: var(--muted); font-weight: 600; font-size: 0.8rem; white-space: nowrap; }
+  .tool tr:last-child td { border-bottom: 0; }
+  .table-wrap { overflow-x: auto; }
+  .sub { color: var(--muted); font-size: 0.8rem; }
+  .yes { color: var(--ok); font-weight: 700; } .no { color: var(--muted); }
+  .badge { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+           border: 1px solid currentColor; }
+  .s-draft { color: var(--muted); } .s-changes_requested { color: var(--warn); } .s-approved { color: var(--ok); }
+  .s-closed, .s-err { color: var(--bad); } .s-mock { color: var(--warn); }
+  .v-pending { color: var(--muted); } .v-ok { color: var(--ok); } .v-flag { color: var(--warn); } .v-fail { color: var(--bad); }
+  .warn { color: var(--warn); margin: 8px 0 0; padding-left: 18px; }
+  .errbox { color: var(--bad); }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; }
+  details.raw { border-top: 1px solid var(--line); font-size: 0.8rem; }
+  details.raw summary { padding: 8px 14px; color: var(--muted); cursor: pointer; }
+  details.raw pre { margin: 0 14px 12px; padding: 10px; background: var(--soft); border-radius: 6px; max-height: 360px;
+                    overflow: auto; white-space: pre-wrap; word-break: break-word; }
+  .copy { padding: 2px 8px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--line); background: var(--card);
+          color: var(--text); }
+
+  .thinking { display: flex; gap: 5px; padding: 10px 0; }
+  .thinking span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: pulse 1.2s infinite; }
+  .thinking span:nth-child(2) { animation-delay: 0.2s; } .thinking span:nth-child(3) { animation-delay: 0.4s; }
+  .error { color: var(--bad); border: 1px solid var(--bad); border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+
+  footer { border-top: 1px solid var(--line); background: var(--card); padding: 12px 16px 16px; }
+  form { max-width: 900px; margin: 0 auto; display: flex; gap: 10px; align-items: flex-end; }
+  textarea { flex: 1; resize: none; max-height: 200px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 10px;
+             background: var(--bg); color: var(--text); font: inherit; outline: none; }
+  textarea:focus { border-color: var(--accent); }
+  #send { padding: 11px 18px; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-text);
+          font-weight: 650; }
+  #send:disabled { opacity: 0.5; cursor: default; }
+
+  @media (max-width: 600px) {
+    header { padding: 10px 16px; } .tagline { display: none; }
+    .user div { max-width: 92%; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="mark">✓</div>
+  <div>
+    <div class="brand">Verified Research</div>
+    <div class="tagline">20 real respondents beat 200 fraudulent ones</div>
+  </div>
+  <nav>
+    <a class="btn" href="/surveys" target="_blank" rel="noopener">Surveys ↗</a>
+    <button class="btn" id="new">New chat</button>
+  </nav>
+</header>
+
+<div id="scroll"><div id="log"></div></div>
+
+<footer>
+  <form id="composer">
+    <textarea id="input" rows="1" placeholder="Your research question, and who you need to hear from…"></textarea>
+    <button id="send" type="submit">Send</button>
+  </form>
+</footer>
+
+<template id="empty">
+  <div class="empty">
+    <h1>Who do you need to hear from?</h1>
+    <p>Describe the research question. The agent decides who qualifies with Crustdata, drafts the survey for your
+      approval, and sends one identity-bound link per verified person.</p>
+    <div class="suggest">
+      <button><b>Find respondents</b>Find 10 engineering leaders at Bengaluru startups with 20–200 employees</button>
+      <button><b>Plan a study</b>I want to learn how Indian fintech CTOs choose observability tools. Who should we survey, and how many exist?</button>
+      <button><b>Draft a survey</b>Draft a 6-question survey on AI coding assistant adoption for VPs of Engineering</button>
+      <button><b>Check progress</b>List my surveys with their invite and response counts</button>
+    </div>
+  </div>
+</template>
+
+<script>
+const $ = (sel, el = document) => el.querySelector(sel);
+const log = $("#log"), scroller = $("#scroll"), input = $("#input"), send = $("#send");
+
+const LABELS = {
+  crustdata_search_people: "People search", crustdata_enrich_person: "Profile enrich",
+  crustdata_enrich_contact: "Business email lookup", crustdata_identify_company: "Company identify",
+  crustdata_search_companies: "Company search", crustdata_search_jobs: "Job search", crustdata_get_credits: "Credits",
+  form_create_survey: "Survey draft", form_revise_survey: "Survey revision", form_get_survey: "Survey status",
+  form_list_surveys: "Surveys", form_create_invite_links: "Invite links", form_get_responses: "Responses",
+};
+
+function storage(fn) { try { return fn(window.localStorage); } catch { return null; } }
+function newId() { return (crypto.randomUUID && crypto.randomUUID()) || String(Date.now()) + Math.random(); }
+let threadId = storage(s => s.getItem("threadId")) || newId();
+storage(s => s.setItem("threadId", threadId));
+
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const fmt = n => typeof n === "number" ? n.toLocaleString() : esc(n);
+const link = (href, text) => href ? `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(text)}</a>` : esc(text);
+const words = k => k.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ").toLowerCase();
+
+if (window.DOMPurify) DOMPurify.addHook("afterSanitizeAttributes", node => {
+  if (node.tagName === "A") { node.setAttribute("target", "_blank"); node.setAttribute("rel", "noopener"); }
+});
+function markdown(text) {
+  if (!window.marked || !window.DOMPurify) return `<p style="white-space:pre-wrap">${esc(text)}</p>`;
+  return DOMPurify.sanitize(marked.parse(text, {gfm: true, breaks: true}));
+}
+
+function nearBottom() { return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 120; }
+function stick(fn) { const pin = nearBottom(); fn(); if (pin) scroller.scrollTop = scroller.scrollHeight; }
+
+// ---- transcript rendering ----
+let current = null;   // {el, text} for the assistant text block being streamed
+const tools = {};     // tool_call id -> card element
+
+function append(el) { $(".empty", log)?.remove(); log.append(el); return el; }
+function div(cls, html = "") { const el = document.createElement("div"); el.className = cls; el.innerHTML = html; return el; }
+
+function addUser(text) { current = null; append(div("user", `<div>${esc(text)}</div>`)); }
+
+let renderQueued = false;
+function addText(delta) {
+  if (!current) current = {el: append(div("assistant")), text: ""};
+  current.text += delta;
+  if (!renderQueued) {
+    renderQueued = true;
+    requestAnimationFrame(() => { renderQueued = false; if (current) stick(() => current.el.innerHTML = markdown(current.text)); });
+  }
+}
+function flushText() { if (current) current.el.innerHTML = markdown(current.text); current = null; }
+
+function addToolCall(ev) {
+  flushText();
+  const card = append(div("tool", `
+    <div class="tool-head"><span class="dot running"></span><span class="tool-name">${esc(LABELS[ev.name] || ev.name)}</span>
+      <span class="tool-meta">running…</span></div>
+    <div class="tool-body">${argsSummary(ev.name, ev.args)}</div>
+    <details class="raw"><summary>Request &amp; raw response</summary><pre>${esc(JSON.stringify(ev.args, null, 2))}</pre></details>`));
+  card.dataset.name = ev.name;
+  tools[ev.id] = card;
+}
+
+function addToolResult(ev) {
+  let card = tools[ev.id];
+  if (!card) { addToolCall({id: ev.id, name: ev.name, args: {}}); card = tools[ev.id]; }
+  const c = ev.content, failed = c && typeof c === "object" && !Array.isArray(c) && c.error;
+  $(".dot", card).className = "dot " + (failed ? "err" : "ok");
+  let meta = "done", body = "";
+  if (failed) { meta = "error"; body = renderError(c); }
+  else {
+    const r = (RENDER[ev.name] || renderGeneric)(c, card);
+    meta = r.meta ?? meta; body = r.body ?? "";
+  }
+  $(".tool-meta", card).innerHTML = meta;
+  const bodyEl = $(".tool-body", card);
+  bodyEl.innerHTML = bodyEl.innerHTML + body;
+  const pre = document.createElement("pre");
+  pre.textContent = typeof c === "string" ? c : JSON.stringify(c, null, 2);
+  $("details.raw", card).append(pre);
+}
+
+function argsSummary(name, args) {
+  const src = name === "crustdata_search_people" ? (args.plan || {}) : args;
+  const chips = Object.entries(src || {})
+    .filter(([k, v]) => {
+      if (v == null || v === "" || ["survey", "targets", "fields"].includes(k)) return false;
+      return Array.isArray(v) ? v.length > 0 : true;
+    })
+    .map(([k, v]) => `<span class="chip"><i>${esc(words(k))}:</i> ${esc(chipValue(v))}</span>`);
+  return chips.length ? `<div class="chips">${chips.join("")}</div>` : "";
+}
+
+function chipValue(v) {
+  if (Array.isArray(v)) return v.map(chipValue).join(", ");
+  if (v && typeof v === "object") return Object.entries(v).filter(([, x]) => x != null).map(([k, x]) => `${words(k)} ${chipValue(x)}`).join(" · ");
+  return String(v);
+}
+
+function renderError(c) {
+  const extra = c.detail || c.message || c.body || c.feedback;
+  const warnings = (c.warnings || []).map(w => `<li>${esc(w)}</li>`).join("");
+  return `<div class="errbox"><b>${esc(c.error)}</b>${c.status ? ` (HTTP ${esc(c.status)})` : ""}${extra ? ` · ${esc(typeof extra === "string" ? extra : JSON.stringify(extra))}` : ""}</div>
+    ${c.review_url ? `<div>${link(c.review_url, "Open review page ↗")}</div>` : ""}${warnings ? `<ul class="warn">${warnings}</ul>` : ""}`;
+}
+
+function status(s) { return `<span class="badge s-${esc(s)}">${esc(words(s || ""))}</span>`; }
+function table(headers, rows) {
+  return `<div class="table-wrap"><table><thead><tr>${headers.map(h => `<th>${h}</th>`).join("")}</tr></thead>
+    <tbody>${rows.join("")}</tbody></table></div>`;
+}
+function copyBtn(text) { return `<button class="copy" data-copy="${esc(text)}">copy</button>`; }
+
+const RENDER = {
+  crustdata_search_people(c) {
+    const people = c.profiles || [];
+    const total = c.total_count == null ? "?" : fmt(c.total_count) + (c.total_count_relation === "gte" ? "+" : "");
+    const rows = people.map((p, i) => `<tr>
+      <td class="sub">${i + 1}</td>
+      <td>${link(p.linkedin_url, p.name || "—")}${p.headline ? `<div class="sub">${esc(p.headline.slice(0, 70))}</div>` : ""}</td>
+      <td>${esc(p.title)}${p.seniority ? `<div class="sub">${esc(p.seniority)}${p.function ? " · " + esc(p.function) : ""}</div>` : ""}</td>
+      <td>${link(p.company_website, p.company || "—")}${p.company_headcount != null ? `<div class="sub">${fmt(p.company_headcount)} people</div>` : ""}</td>
+      <td>${esc(p.location)}</td>
+      <td>${p.has_business_email ? '<span class="yes" title="Business email on file">✓</span>' : '<span class="no">—</span>'}</td></tr>`);
+    const warnings = (c.warnings || []).map(w => `<li>${esc(w)}</li>`).join("");
+    return {
+      meta: `${total} ${c.total_count === 1 ? "match" : "matches"} · showing ${fmt(people.length)}${c.next_cursor ? " · more available" : ""}`,
+      body: (people.length ? table(["#", "Name", "Title", "Company", "Location", "Email"], rows) : `<div class="sub">No profiles returned.</div>`)
+        + (c.dropped_outside_person_countries ? `<div class="sub">${fmt(c.dropped_outside_person_countries)} dropped outside the requested countries.</div>` : "")
+        + (warnings ? `<ul class="warn">${warnings}</ul>` : ""),
+    };
+  },
+  crustdata_enrich_contact(c) {
+    const rows = (c.people || []).map(p => {
+      const slug = (p.linkedin_url || "").replace(/\/+$/, "").split("/").pop();
+      const emails = (p.business_emails || []).map(e => `<div>${esc(e.email)} <span class="sub">${esc(e.status || "")}</span></div>`).join("")
+        || `<span class="no">${esc(p.message || p.match_status || "none")}</span>`;
+      return `<tr><td>${link(p.linkedin_url, slug || "profile")}</td><td>${emails}</td></tr>`;
+    });
+    const found = (c.people || []).filter(p => (p.business_emails || []).length).length;
+    return {
+      meta: `${found}/${(c.people || []).length} with email${c.mocked ? ' <span class="badge s-mock">mocked</span>' : ""}`,
+      body: table(["Profile", "Business email"], rows),
+    };
+  },
+  form_create_survey: renderSurvey, form_revise_survey: renderSurvey, form_get_survey: renderSurvey,
+  form_list_surveys(c) {
+    const rows = (c.surveys || []).map(s => `<tr><td>${link(s.review_url, s.title)}</td><td>${status(s.status)}</td>
+      <td>${fmt(s.invites)}</td><td>${fmt(s.responses)}</td></tr>`);
+    return {meta: `${(c.surveys || []).length} surveys`, body: rows.length ? table(["Survey", "Status", "Invites", "Responses"], rows) : ""};
+  },
+  form_create_invite_links(c) {
+    const rows = (c.links || []).map(l => `<tr><td>${esc(l.name)}</td><td>${esc(l.business_email || "—")}</td>
+      <td>${link(l.url, "open ↗")} ${copyBtn(l.url)}${l.reused ? ' <span class="sub">existing</span>' : ""}</td></tr>`);
+    return {meta: `${(c.links || []).length} links minted`, body: table(["Person", "Email", "Unique link"], rows)};
+  },
+  form_get_responses(c) {
+    const st = c.stats || {};
+    const rows = (c.responses || []).map(r => `<tr><td>${esc(r.target?.name)}<div class="sub">${esc(r.target?.title || "")}</div></td>
+      <td>${esc(r.target?.company)}</td><td><span class="badge v-${esc(r.verified)}">${esc(r.verified)}</span></td>
+      <td class="sub">${esc(r.submitted_at)}</td></tr>`);
+    return {meta: `${fmt(st.responded ?? (c.responses || []).length)} responded · ${fmt(st.opened ?? 0)} opened · ${fmt(st.invited ?? 0)} invited`,
+            body: rows.length ? table(["Respondent", "Company", "Verified", "Submitted"], rows) : ""};
+  },
+};
+
+function renderSurvey(c) {
+  const st = c.stats;
+  return {
+    meta: `${status(c.status)}${c.questions ? ` · ${c.questions} questions` : ""}`,
+    body: `<div class="row">${c.survey?.title ? `<b>${esc(c.survey.title)}</b>` : ""}
+        ${c.review_url ? `<a class="btn primary" href="${esc(c.review_url)}" target="_blank" rel="noopener">Review &amp; approve ↗</a>` : ""}
+        <span class="sub">${esc(c.survey_id)}</span></div>
+      ${c.feedback ? `<div style="margin-top:8px"><span class="sub">Reviewer feedback:</span> ${esc(c.feedback)}</div>` : ""}
+      ${st ? `<div class="sub" style="margin-top:6px">${fmt(st.invited)} invited · ${fmt(st.opened)} opened · ${fmt(st.responded)} responded</div>` : ""}`,
+  };
+}
+
+function renderGeneric(c) {
+  if (c && typeof c === "object" && !Array.isArray(c)) {
+    const flat = Object.entries(c).filter(([, v]) => v === null || typeof v !== "object");
+    if (flat.length && flat.length <= 10)
+      return {body: `<dl class="kv">${flat.map(([k, v]) => `<dt>${esc(words(k))}</dt><dd>${fmt(v)}</dd>`).join("")}</dl>`};
+  }
+  return {};
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-copy]");
+  if (!b) return;
+  navigator.clipboard?.writeText(b.dataset.copy).then(() => { b.textContent = "copied"; setTimeout(() => b.textContent = "copy", 1200); });
+});
+
+function handle(ev) {
+  if (ev.type === "user") addUser(ev.text);
+  else if (ev.type === "text") addText(ev.text);
+  else if (ev.type === "tool_call") addToolCall(ev);
+  else if (ev.type === "tool_result") addToolResult(ev);
+  else if (ev.type === "error") { flushText(); append(div("error", esc(ev.message))); }
+}
+
+// ---- thinking indicator + turn lifecycle ----
+let thinking = null;
+function setThinking(on) {
+  thinking?.remove(); thinking = null;
+  if (on) stick(() => thinking = append(div("thinking", "<span></span><span></span><span></span>")));
+}
+
+let busy = false;
+async function ask(text) {
+  if (busy || !text.trim()) return;
+  busy = true; send.disabled = true;
+  stick(() => addUser(text));
+  setThinking(true);
+  try {
+    const res = await fetch("/api/chat", {method: "POST", headers: {"Content-Type": "application/json"},
+                                          body: JSON.stringify({thread_id: threadId, message: text})});
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    const reader = res.body.getReader(), decoder = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, {stream: true});
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 2);
+        if (!line.startsWith("data: ")) continue;
+        const ev = JSON.parse(line.slice(6));
+        if (ev.type === "done") continue;
+        thinking?.remove(); thinking = null;
+        stick(() => handle(ev));
+        if (ev.type === "tool_call" || ev.type === "tool_result") setThinking(true);
+      }
+    }
+  } catch (err) {
+    handle({type: "error", message: String(err)});
+  } finally {
+    flushText(); setThinking(false);
+    busy = false; send.disabled = false; input.focus();
+  }
+}
+
+function showEmpty() {
+  log.innerHTML = "";
+  log.append($("#empty").content.cloneNode(true));
+  log.querySelectorAll(".suggest button").forEach(b =>
+    b.addEventListener("click", () => ask(b.childNodes[b.childNodes.length - 1].textContent.trim())));
+}
+
+async function restore() {
+  showEmpty();
+  try {
+    const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}`);
+    const {events} = await res.json();
+    events.forEach(handle); flushText();
+    scroller.scrollTop = scroller.scrollHeight;
+  } catch { /* fresh thread */ }
+}
+
+$("#composer").addEventListener("submit", e => {
+  e.preventDefault();
+  const text = input.value; input.value = ""; grow(); ask(text);
+});
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("#composer").requestSubmit(); }
+});
+function grow() { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 200) + "px"; }
+input.addEventListener("input", grow);
+$("#new").addEventListener("click", () => {
+  if (busy) return;
+  threadId = newId(); storage(s => s.setItem("threadId", threadId));
+  Object.keys(tools).forEach(k => delete tools[k]); current = null;
+  showEmpty(); input.focus();
+});
+
+restore();
+input.focus();
+</script>
+</body>
+</html>

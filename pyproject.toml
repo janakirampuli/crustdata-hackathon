@@ -19,6 +19,7 @@ dependencies = [
 [project.scripts]
 agent = "agent.cli:main"
 forms = "skills.form_builder.server:main"
+web = "agent.web:main"
 
 [dependency-groups]
 dev = ["pytest>=8"]
