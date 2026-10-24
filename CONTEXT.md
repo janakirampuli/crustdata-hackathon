@@ -93,13 +93,15 @@ Us: decide who qualifies (Crustdata) → contact **only** those people → each 
   - ~0.03 credits per result; premium field groups cost more.
   - Always pass `fields` as whole sections (`basic_profile`, `experience`, `social_handles`, `contact`). The leaf paths `basic_profile.first_name` / `last_name` → HTTP 400.
 - `POST /person/enrich` by LinkedIn URL or business email. **Pass `fields`**, or you get only name + id.
-- Search returns **no emails**, only a `business_email_verified` / `has_business_email` flag and the LinkedIn URL. Emails come from **Contact Enrich** (extra credits: call it only for selected targets).
+- Search returns **no emails**, only a `has_business_email` flag and the LinkedIn URL. `/person/enrich` doesn't return emails either. Emails come only from **Contact Enrich**: `POST /person/contact/enrich` with up to 25 LinkedIn URLs, `fields: ["contact.business_emails"]`, `verified: true`. It costs 1 credit per matched person (+0.5 if verified), and unmatched lookups are free. Statuses: deliverable, catch_all, invalid, unknown.
+- People often hold several *current* roles, and filters match any of them. The tool's summary view shows the role that matched.
 - `POST /company/identify` is free; `POST /company/search` and `POST /job/search` are also available.
 - `GET /user/credits` returns the balance (zero-credit call).
 
 ## Status
 
-- Agent backbone + Crustdata skill: done. See [README.md](README.md) to run it.
+- Agent backbone + Crustdata skill: done and tested live. See [README.md](README.md) to run it.
+- Business emails: `crustdata_enrich_contact` is wired to the real endpoint, but **mocked until Crustdata enables it** (returns 403 today). Mock emails are plus-addresses of `MOCK_EMAIL_INBOX` (or `@mock.invalid`), marked `mocked: true`, so outreach can't reach strangers. **Teammate:** in mock mode the email domain won't match the employer, so the domain-vs-employer verification check has to skip or flag mocked targets.
 
 ## Work split (proposal — adjust)
 
@@ -116,4 +118,4 @@ Interface between the halves: a **target record** `{crustdata_person_id, name, t
 1. Which form tool? (Our own tiny FastAPI form, Tally or Typeform with hidden fields, or Google Forms.) The unique token per invite must survive it.
 2. Email sending: Gmail API vs Resend/SES. We need reply tracking for follow-ups.
 3. Will the organizers let us survey the room and share the attendee list?
-4. Confirm with Crustdata engineers on site that the `end_date` filter behaves as documented, and how we get business emails on our key (Contact Enrich, or the `contact` section).
+4. ~~Contact enrich access~~: Crustdata confirmed they'll enable `POST /person/contact/enrich` (our only source of business emails) on our key later, around demos. Until then it's **mocked** (`CRUSTDATA_MOCK_CONTACT_ENRICH=true`). Still to confirm: the `end_date` filter behaves as documented.

@@ -47,6 +47,11 @@ class CrustdataClient:
     def enrich_person(self, body: dict) -> Any:
         return self._request("POST", "person/enrich", body)
 
+    def enrich_contact(self, body: dict) -> Any:
+        if os.environ.get("CRUSTDATA_MOCK_CONTACT_ENRICH", "").lower() in {"1", "true", "yes"}:
+            return mock_contact_enrich(body)
+        return self._request("POST", "person/contact/enrich", body)
+
     def identify_company(self, body: dict) -> Any:
         return self._request("POST", "company/identify", body)
 
@@ -58,6 +63,33 @@ class CrustdataClient:
 
     def get_credits(self) -> Any:
         return self._request("GET", "user/credits")
+
+
+def mock_contact_enrich(body: dict) -> list[dict]:
+    """Documented /person/contact/enrich response shape, until the endpoint is enabled on our key.
+
+    Addresses must never reach a real stranger, so they go to plus-addresses of our own inbox
+    (MOCK_EMAIL_INBOX=team@gmail.com -> team+<linkedin-slug>@gmail.com) or to the reserved .invalid TLD.
+    """
+    inbox = os.environ.get("MOCK_EMAIL_INBOX", "").strip()
+    results = []
+    for url in body.get("professional_network_profile_urls") or []:
+        slug = "".join(c for c in url.rstrip("/").rsplit("/", 1)[-1].lower() if c.isalnum()) or "unknown"
+        if "@" in inbox:
+            local, domain = inbox.split("@", 1)
+            email = f"{local}+{slug}@{domain}"
+        else:
+            email = f"{slug}@mock.invalid"
+        results.append({
+            "matched_on": url,
+            "match_type": "professional_network_profile_url",
+            "match_status": "matched",
+            "matches": [{
+                "confidence_score": 1.0,
+                "person_data": {"contact": {"business_emails": [{"email": email, "status": "deliverable"}]}},
+            }],
+        })
+    return results
 
 
 _client: CrustdataClient | None = None

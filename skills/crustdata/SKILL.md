@@ -13,7 +13,8 @@ Crustdata indexes LinkedIn-derived people and company data. Use it to turn an au
 |---|---|
 | People by title, seniority, function, geography, employer attributes, skills, past employers, education | `crustdata_search_people` (typed plan) |
 | Canonical name / primary domain / id for a named company | `crustdata_identify_company` (**free**). Call this before filtering people by employer. |
-| Verify one specific person's current employer and title | `crustdata_enrich_person` |
+| Verify one specific person's current employer and title | `crustdata_enrich_person` (no emails) |
+| Business email for a **selected** target | `crustdata_enrich_contact` (1 credit per matched person; only for final targets, never a whole search page). Prefer `deliverable`; treat `catch_all` as unconfirmed. Search results only carry `has_business_email`. |
 | Companies by revenue, funding, technologies, or other firmographics | `crustdata_search_companies`, then people via `companyIds` |
 | Companies that are hiring for a role | `crustdata_search_jobs` |
 | Credit balance | `crustdata_get_credits` (zero-credit) |

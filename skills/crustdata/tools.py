@@ -4,6 +4,7 @@ Every tool returns a JSON-serializable dict. Provider errors come back as {"erro
 raising, so the agent can read Crustdata's 400 message and fix its query.
 """
 
+import os
 from typing import Any
 
 from langchain_core.tools import tool
@@ -33,15 +34,30 @@ def _call(fn, *args) -> tuple[Any, dict | None]:
         return None, {"error": type(e).__name__, "detail": str(e)}
 
 
-def _first(items):
-    return items[0] if isinstance(items, list) and items else {}
+def _role_matches(role: dict, plan: ContactSearchPlan | None) -> bool:
+    if plan is None:
+        return False
+    title = str(role.get("title") or "").lower()
+    if plan.currentJobTitles and not any(
+            all(word in title for word in phrase.lower().split()) for phrase in plan.currentJobTitles):
+        return False
+    headcount = role.get("company_headcount_latest")
+    if plan.minHeadcount is not None and (headcount is None or headcount < plan.minHeadcount):
+        return False
+    if plan.maxHeadcount is not None and (headcount is None or headcount > plan.maxHeadcount):
+        return False
+    return bool(plan.currentJobTitles or plan.minHeadcount is not None or plan.maxHeadcount is not None)
 
 
-def compact_person(row: dict) -> dict:
+def compact_person(row: dict, plan: ContactSearchPlan | None = None) -> dict:
     """Interface-sized view of a person row: what targeting and outreach need, nothing else."""
     profile = row.get("basic_profile") or {}
     location = profile.get("location") or {}
-    current = _first(((row.get("experience") or {}).get("employment_details") or {}).get("current"))
+    roles = ((row.get("experience") or {}).get("employment_details") or {}).get("current") or []
+    # People often hold several current roles and the filter may match any one of them, so show the role
+    # that satisfies the plan's title/headcount, falling back to the profile's default role.
+    current = (next((r for r in roles if _role_matches(r, plan)), None)
+               or next((r for r in roles if r.get("is_default")), roles[0] if roles else {}))
     social = row.get("social_handles") or {}
     linkedin = (social.get("professional_network_identifier") or {}).get("profile_url")
     contact = row.get("contact") or {}
@@ -55,13 +71,13 @@ def compact_person(row: dict) -> dict:
         "crustdata_company_id": current.get("crustdata_company_id") or current.get("company_id"),
         "seniority": current.get("seniority_level"),
         "function": current.get("function_category"),
-        "company_headcount_range": current.get("company_headcount_range"),
+        "company_headcount": current.get("company_headcount_latest"),
         "role_start_date": current.get("start_date"),
         "location": ", ".join(str(v) for v in (location.get("city"), location.get("state"), location.get("country")) if v)
         if isinstance(location, dict) else location,
+        "other_current_roles": [f"{r.get('title')} @ {r.get('name')}" for r in roles if r is not current],
         "linkedin_url": linkedin,
         "has_business_email": contact.get("has_business_email"),
-        "business_emails": contact.get("business_emails") or contact.get("business_email"),
     }
 
 
@@ -104,7 +120,7 @@ def search_people(plan: ContactSearchPlan, limit: int = 25, cursor: str | None =
         "effective_filters": filters,
         "sorts": sorts,
         "warnings": warnings,
-        "profiles": rows if raw else [compact_person(r) for r in rows],
+        "profiles": rows if raw else [compact_person(r, plan) for r in rows],
     }
 
 
@@ -130,6 +146,46 @@ def enrich_person(professionalNetworkProfileUrls: list[str] | None = None, busin
         body["business_emails"] = businessEmails
     data, error = _call(get_client().enrich_person, body)
     return error or data
+
+
+class EnrichContactInput(BaseModel):
+    professionalNetworkProfileUrls: list[str] = Field(
+        min_length=1, max_length=25, description="LinkedIn profile URLs of people already selected as targets.")
+    verified: bool = Field(True, description="Only return business emails that pass a deliverability check now "
+                           "(deliverable or catch_all). +0.5 credit per person with a verified email.")
+
+
+@tool("crustdata_enrich_contact", args_schema=EnrichContactInput)
+def enrich_contact(professionalNetworkProfileUrls: list[str], verified: bool = True) -> Any:
+    """Get business email addresses for selected people via /person/contact/enrich. 1 credit per matched
+    person (no match is free). Call ONLY for final targets, never for a whole search page. Statuses:
+    deliverable (safe), catch_all (domain accepts anything, unconfirmed), invalid, unknown."""
+    body = {
+        "professional_network_profile_urls": professionalNetworkProfileUrls,
+        "fields": ["contact.business_emails"],
+        "verified": verified,
+    }
+    data, error = _call(get_client().enrich_contact, body)
+    if error:
+        return error
+    people = []
+    for entry in data if isinstance(data, list) else []:
+        person = (_first_match(entry) or {}).get("person_data") or {}
+        contact = person.get("contact") or {}
+        people.append({
+            "linkedin_url": entry.get("matched_on"),
+            "match_status": entry.get("match_status") or ("matched" if entry.get("matches") else "not_found"),
+            "crustdata_person_id": person.get("crustdata_person_id"),
+            "business_emails": contact.get("business_emails") or [],
+            "message": contact.get("business_emails_message"),
+        })
+    mocked = os.environ.get("CRUSTDATA_MOCK_CONTACT_ENRICH", "").lower() in {"1", "true", "yes"}
+    return {"people": people, "mocked": mocked}
+
+
+def _first_match(entry: dict) -> dict | None:
+    matches = entry.get("matches") if isinstance(entry, dict) else None
+    return matches[0] if matches else None
 
 
 class IdentifyCompanyInput(BaseModel):
@@ -224,4 +280,4 @@ def get_credits() -> Any:
     return error or data
 
 
-TOOLS = [search_people, enrich_person, identify_company, search_companies, search_jobs, get_credits]
+TOOLS = [search_people, enrich_person, enrich_contact, identify_company, search_companies, search_jobs, get_credits]
