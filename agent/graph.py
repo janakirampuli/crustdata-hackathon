@@ -65,7 +65,9 @@ def build_agent(skill_names: list[str] | None = None, model: str | None = None, 
     }])
 
     def call_model(state: State) -> dict:
-        return {"messages": [llm.invoke([system, *state["messages"]])]}
+        # Top-level cache_control moves a breakpoint to the end of the conversation on every call, so each tool-loop
+        # step and each new turn reads the earlier prefix from cache and only writes what was appended.
+        return {"messages": [llm.invoke([system, *state["messages"]], cache_control={"type": "ephemeral"})]}
 
     graph = StateGraph(State)
     graph.add_node("agent", call_model)

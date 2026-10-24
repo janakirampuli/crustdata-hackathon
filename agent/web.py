@@ -8,12 +8,14 @@ GET /api/threads/<id> replays a thread's history as the same events (minus text 
 
 import json
 import os
+import sqlite3
 import threading
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
+from langgraph.checkpoint.sqlite import SqliteSaver
 from pydantic import BaseModel, Field
 
 from skills.form_builder.server import app as forms_app
@@ -21,10 +23,19 @@ from skills.form_builder.server import app as forms_app
 from .cli import _text
 
 STATIC = Path(__file__).parent / "static"
+DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "agent.db"
 
 app = FastAPI(title="Research agent")
 _agent = None
 _agent_lock = threading.Lock()
+
+
+def _checkpointer() -> SqliteSaver:
+    """Conversations survive server restarts. AGENT_DB overrides the path."""
+    path = Path(os.environ.get("AGENT_DB", DEFAULT_DB))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Turns stream from a threadpool; SqliteSaver serializes access with its own lock.
+    return SqliteSaver(sqlite3.connect(path, check_same_thread=False))
 
 
 def get_agent():
@@ -33,7 +44,7 @@ def get_agent():
         if _agent is None:
             from .graph import build_agent
 
-            _agent = build_agent()
+            _agent = build_agent(checkpointer=_checkpointer())
     return _agent
 
 

@@ -14,6 +14,7 @@ dependencies = [
     "uvicorn>=0.54.0",
     "jinja2>=3.1.6",
     "python-multipart>=0.0.32",
+    "langgraph-checkpoint-sqlite>=3.1.2",
 ]
 
 [project.scripts]
